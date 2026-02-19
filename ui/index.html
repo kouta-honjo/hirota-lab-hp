@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GCS File Console</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <h1>GCS File Console</h1>
+      <p>Connect this UI to your Flask backend and manage files.</p>
+    </header>
+
+    <section class="panel">
+      <label for="backendUrl">Backend URL</label>
+      <div class="row">
+        <input id="backendUrl" type="url" placeholder="https://your-backend-url" />
+        <button id="saveUrlBtn" type="button">Save</button>
+        <button id="healthBtn" type="button">Health Check</button>
+      </div>
+      <p class="hint">Expected endpoints: <code>/files</code>, <code>/upload</code>, <code>/download/:filename</code>, <code>/delete/:filename</code></p>
+    </section>
+
+    <section class="panel">
+      <h2>Upload File</h2>
+      <div class="row">
+        <input id="fileInput" type="file" />
+        <button id="uploadBtn" type="button">Upload</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row between">
+        <h2>Files</h2>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="filesBody"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Logs</h2>
+      <pre id="logBox"></pre>
+    </section>
+  </main>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

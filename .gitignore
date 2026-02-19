@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+gcloud-sdk/
+gcloud-sdk.zip
+
+ui/.vercel/
+*.log
