@@ -7,12 +7,19 @@ from io import BytesIO
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": os.environ.get("ALLOWED_ORIGINS", "*").split(",")}})
-storage_client = storage.Client()
 
 # 環境変数からバケット名とフォルダプレフィックスを取得
 # Cloud Runデプロイ時に設定します
 GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'agridx')
 GCS_FOLDER_PREFIX = os.environ.get('GCS_FOLDER_PREFIX', '統合生命科学特論/') # 末尾のスラッシュは重要
+
+
+def _get_bucket():
+    # Delay client creation until request time so import-time crashes do not occur
+    # on platforms where project/env is injected at runtime (e.g. serverless).
+    project = os.environ.get('GOOGLE_CLOUD_PROJECT') or os.environ.get('GCP_PROJECT')
+    client = storage.Client(project=project) if project else storage.Client()
+    return client.bucket(GCS_BUCKET_NAME)
 
 def _safe_object_name(filename: str) -> str:
     # GCS object names use '/' separators. Prevent path traversal and absolute paths.
@@ -36,7 +43,10 @@ def hello():
 # ファイル一覧の取得
 @app.route('/files', methods=['GET'])
 def list_files():
-    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    try:
+        bucket = _get_bucket()
+    except Exception as e:
+        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
     blobs = bucket.list_blobs(prefix=GCS_FOLDER_PREFIX)
     
     file_list = []
@@ -56,7 +66,10 @@ def list_files():
 # ファイルのダウンロード
 @app.route('/download/<path:filename>', methods=['GET'])
 def download_file(filename):
-    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    try:
+        bucket = _get_bucket()
+    except Exception as e:
+        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
     try:
         blob_name = _blob_name(filename)
     except ValueError:
@@ -92,7 +105,10 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
 
     if file:
-        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        try:
+            bucket = _get_bucket()
+        except Exception as e:
+            return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
         try:
             destination_blob_name = _blob_name(file.filename)
         except ValueError:
@@ -108,7 +124,10 @@ def upload_file():
 # ファイルの削除
 @app.route('/delete/<path:filename>', methods=['DELETE'])
 def delete_file(filename):
-    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    try:
+        bucket = _get_bucket()
+    except Exception as e:
+        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
     try:
         blob_name = _blob_name(filename)
     except ValueError:
