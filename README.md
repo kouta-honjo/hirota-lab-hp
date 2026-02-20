@@ -3,6 +3,10 @@
 Google Cloud Storage (GCS) バケット `agridx` の `統合生命科学特論/` 配下ファイルを操作する Flask API です。  
 Cloud Run デプロイと、Vercel UI からの操作確認を想定しています。
 
+## 現在のデプロイ先
+- UI (Vercel): `https://ui-tawny-one.vercel.app`
+- Backend (Cloud Run): `https://fileaccess-904514069802.asia-northeast2.run.app`
+
 ## 実装内容
 - ファイル一覧取得
 - ファイルアップロード
@@ -23,8 +27,9 @@ Cloud Run デプロイと、Vercel UI からの操作確認を想定していま
 ## 必要な環境変数
 - `GCS_BUCKET_NAME` (default: `agridx`)
 - `GCS_FOLDER_PREFIX` (default: `統合生命科学特論/`)
+- `CMS_PREFIX` (default: `cms/`)
 - `GOOGLE_CLOUD_PROJECT` (ローカル実行時に必要)
-- `ALLOWED_ORIGINS` (任意, 例: `https://ui-tawny-one.vercel.app`)
+- `ALLOWED_ORIGINS` (推奨: `https://ui-tawny-one.vercel.app`)
 
 ## API エンドポイント
 - `GET /` : ヘルスチェック
@@ -32,6 +37,14 @@ Cloud Run デプロイと、Vercel UI からの操作確認を想定していま
 - `POST /upload` : ファイルアップロード (`multipart/form-data`, field: `file`)
 - `GET /download/<filename>` : ファイルダウンロード
 - `DELETE /delete/<filename>` : ファイル削除
+- `GET /content/news` : ニュース一覧取得
+- `POST /content/news` : ニュース作成
+- `PUT /content/news/<id>` : ニュース更新
+- `DELETE /content/news/<id>` : ニュース削除
+- `GET /content/events` : 行事予定一覧取得
+- `POST /content/events` : 行事予定作成
+- `PUT /content/events/<id>` : 行事予定更新
+- `DELETE /content/events/<id>` : 行事予定削除
 
 ## ローカル起動
 ```powershell
@@ -58,12 +71,12 @@ gcloud run deploy gcs-backend-service `
   --region asia-northeast2 `
   --allow-unauthenticated `
   --service-account gcs-backend-service-sa@ihomework1.iam.gserviceaccount.com `
-  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",ALLOWED_ORIGINS="https://ui-tawny-one.vercel.app"
+  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",CMS_PREFIX="cms/",ALLOWED_ORIGINS="https://ui-tawny-one.vercel.app"
 ```
 
 ## Vercel UI での確認
-1. `ui` を Vercel にデプロイ
-2. UIを開き `Backend URL` に Cloud Run URL を入力
+1. UIを開く: `https://ui-tawny-one.vercel.app`
+2. `Backend URL` に `https://fileaccess-904514069802.asia-northeast2.run.app` を入力
 3. `Health Check` -> `Refresh` -> Upload/Download/Delete で動作確認
 
 ## IAM

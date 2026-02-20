@@ -1,0 +1,3 @@
+GCS_BUCKET_NAME: "agridx"
+GCS_FOLDER_PREFIX: "統合生命科学特論/"
+ALLOWED_ORIGINS: "https://ui-tawny-one.vercel.app"

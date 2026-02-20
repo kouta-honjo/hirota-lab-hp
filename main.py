@@ -1,5 +1,7 @@
 import os
 import posixpath
+import json
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from google.cloud import storage
@@ -12,6 +14,7 @@ CORS(app, resources={r"/*": {"origins": os.environ.get("ALLOWED_ORIGINS", "*").s
 # Cloud Runデプロイ時に設定します
 GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'agridx')
 GCS_FOLDER_PREFIX = os.environ.get('GCS_FOLDER_PREFIX', '統合生命科学特論/') # 末尾のスラッシュは重要
+CMS_PREFIX = os.environ.get('CMS_PREFIX', 'cms/')
 
 
 def _get_bucket():
@@ -35,6 +38,33 @@ def _blob_name(filename: str) -> str:
     safe_name = _safe_object_name(filename)
     # Use POSIX join to avoid backslashes on Windows
     return posixpath.join(GCS_FOLDER_PREFIX, safe_name)
+
+def _cms_blob_name(filename: str) -> str:
+    safe_name = _safe_object_name(filename)
+    return posixpath.join(GCS_FOLDER_PREFIX, CMS_PREFIX, safe_name)
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+def _read_json_blob(blob_name: str, default_payload: dict) -> dict:
+    bucket = _get_bucket()
+    blob = bucket.blob(blob_name)
+    if not blob.exists():
+        return default_payload
+    data = blob.download_as_bytes()
+    if not data:
+        return default_payload
+    try:
+        payload = json.loads(data.decode('utf-8'))
+    except Exception:
+        return default_payload
+    return payload if isinstance(payload, dict) else default_payload
+
+def _write_json_blob(blob_name: str, payload: dict) -> None:
+    bucket = _get_bucket()
+    blob = bucket.blob(blob_name)
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    blob.upload_from_string(body, content_type='application/json; charset=utf-8')
 
 @app.route('/')
 def hello():
@@ -140,6 +170,234 @@ def delete_file(filename):
     try:
         blob.delete()
         return jsonify({'message': f'File {filename} deleted successfully from {blob_name}'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def _init_news_payload():
+    return {
+        'updated_at': _utc_now_iso(),
+        'items': []
+    }
+
+def _init_events_payload():
+    return {
+        'updated_at': _utc_now_iso(),
+        'items': []
+    }
+
+def _next_id(items):
+    max_id = 0
+    for item in items:
+        try:
+            max_id = max(max_id, int(item.get('id', 0)))
+        except Exception:
+            continue
+    return max_id + 1
+
+def _validate_news_input(payload: dict, for_update: bool = False):
+    errors = []
+    title = payload.get('title')
+    body = payload.get('body')
+    date = payload.get('date')
+    if not for_update or 'title' in payload:
+        if not isinstance(title, str) or not title.strip():
+            errors.append('title is required')
+    if not for_update or 'body' in payload:
+        if not isinstance(body, str) or not body.strip():
+            errors.append('body is required')
+    if not for_update or 'date' in payload:
+        if not isinstance(date, str) or not date.strip():
+            errors.append('date is required')
+    return errors
+
+def _validate_event_input(payload: dict, for_update: bool = False):
+    errors = []
+    title = payload.get('title')
+    date = payload.get('date')
+    if not for_update or 'title' in payload:
+        if not isinstance(title, str) or not title.strip():
+            errors.append('title is required')
+    if not for_update or 'date' in payload:
+        if not isinstance(date, str) or not date.strip():
+            errors.append('date is required')
+    return errors
+
+@app.route('/content/news', methods=['GET'])
+def get_news():
+    try:
+        blob_name = _cms_blob_name('news.json')
+        payload = _read_json_blob(blob_name, _init_news_payload())
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/news', methods=['POST'])
+def create_news():
+    data = request.get_json(silent=True) or {}
+    errors = _validate_news_input(data, for_update=False)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        blob_name = _cms_blob_name('news.json')
+        payload = _read_json_blob(blob_name, _init_news_payload())
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        item = {
+            'id': _next_id(items),
+            'title': data.get('title', '').strip(),
+            'body': data.get('body', '').strip(),
+            'date': data.get('date', '').strip(),
+            'link': (data.get('link') or '').strip(),
+            'visible': bool(data.get('visible', True)),
+            'created_at': now,
+            'updated_at': now
+        }
+        items.append(item)
+        payload['items'] = items
+        payload['updated_at'] = now
+        _write_json_blob(blob_name, payload)
+        return jsonify(item), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/news/<int:item_id>', methods=['PUT'])
+def update_news(item_id: int):
+    data = request.get_json(silent=True) or {}
+    errors = _validate_news_input(data, for_update=True)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        blob_name = _cms_blob_name('news.json')
+        payload = _read_json_blob(blob_name, _init_news_payload())
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        for item in items:
+            if item.get('id') == item_id:
+                if 'title' in data:
+                    item['title'] = data.get('title', '').strip()
+                if 'body' in data:
+                    item['body'] = data.get('body', '').strip()
+                if 'date' in data:
+                    item['date'] = data.get('date', '').strip()
+                if 'link' in data:
+                    item['link'] = (data.get('link') or '').strip()
+                if 'visible' in data:
+                    item['visible'] = bool(data.get('visible'))
+                item['updated_at'] = now
+                payload['updated_at'] = now
+                _write_json_blob(blob_name, payload)
+                return jsonify(item)
+        return jsonify({'error': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/news/<int:item_id>', methods=['DELETE'])
+def delete_news(item_id: int):
+    try:
+        blob_name = _cms_blob_name('news.json')
+        payload = _read_json_blob(blob_name, _init_news_payload())
+        items = payload.get('items', [])
+        remaining = [item for item in items if item.get('id') != item_id]
+        if len(remaining) == len(items):
+            return jsonify({'error': 'Item not found'}), 404
+        payload['items'] = remaining
+        payload['updated_at'] = _utc_now_iso()
+        _write_json_blob(blob_name, payload)
+        return jsonify({'message': 'Deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/events', methods=['GET'])
+def get_events():
+    try:
+        blob_name = _cms_blob_name('events.json')
+        payload = _read_json_blob(blob_name, _init_events_payload())
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/events', methods=['POST'])
+def create_event():
+    data = request.get_json(silent=True) or {}
+    errors = _validate_event_input(data, for_update=False)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        blob_name = _cms_blob_name('events.json')
+        payload = _read_json_blob(blob_name, _init_events_payload())
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        item = {
+            'id': _next_id(items),
+            'title': data.get('title', '').strip(),
+            'date': data.get('date', '').strip(),
+            'time_start': (data.get('time_start') or '').strip(),
+            'time_end': (data.get('time_end') or '').strip(),
+            'location': (data.get('location') or '').strip(),
+            'description': (data.get('description') or '').strip(),
+            'link': (data.get('link') or '').strip(),
+            'visible': bool(data.get('visible', True)),
+            'created_at': now,
+            'updated_at': now
+        }
+        items.append(item)
+        payload['items'] = items
+        payload['updated_at'] = now
+        _write_json_blob(blob_name, payload)
+        return jsonify(item), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/events/<int:item_id>', methods=['PUT'])
+def update_event(item_id: int):
+    data = request.get_json(silent=True) or {}
+    errors = _validate_event_input(data, for_update=True)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        blob_name = _cms_blob_name('events.json')
+        payload = _read_json_blob(blob_name, _init_events_payload())
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        for item in items:
+            if item.get('id') == item_id:
+                if 'title' in data:
+                    item['title'] = data.get('title', '').strip()
+                if 'date' in data:
+                    item['date'] = data.get('date', '').strip()
+                if 'time_start' in data:
+                    item['time_start'] = (data.get('time_start') or '').strip()
+                if 'time_end' in data:
+                    item['time_end'] = (data.get('time_end') or '').strip()
+                if 'location' in data:
+                    item['location'] = (data.get('location') or '').strip()
+                if 'description' in data:
+                    item['description'] = (data.get('description') or '').strip()
+                if 'link' in data:
+                    item['link'] = (data.get('link') or '').strip()
+                if 'visible' in data:
+                    item['visible'] = bool(data.get('visible'))
+                item['updated_at'] = now
+                payload['updated_at'] = now
+                _write_json_blob(blob_name, payload)
+                return jsonify(item)
+        return jsonify({'error': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/content/events/<int:item_id>', methods=['DELETE'])
+def delete_event(item_id: int):
+    try:
+        blob_name = _cms_blob_name('events.json')
+        payload = _read_json_blob(blob_name, _init_events_payload())
+        items = payload.get('items', [])
+        remaining = [item for item in items if item.get('id') != item_id]
+        if len(remaining) == len(items):
+            return jsonify({'error': 'Item not found'}), 404
+        payload['items'] = remaining
+        payload['updated_at'] = _utc_now_iso()
+        _write_json_blob(blob_name, payload)
+        return jsonify({'message': 'Deleted'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

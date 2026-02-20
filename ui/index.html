@@ -24,6 +24,68 @@
     </section>
 
     <section class="panel">
+      <h2>News Release</h2>
+      <div class="form-grid">
+        <input id="newsTitle" type="text" placeholder="Title" />
+        <input id="newsDate" type="date" />
+        <input id="newsLink" type="url" placeholder="Link (optional)" />
+        <label class="checkbox">
+          <input id="newsVisible" type="checkbox" checked />
+          Visible
+        </label>
+        <textarea id="newsBody" rows="4" placeholder="Body"></textarea>
+      </div>
+      <div class="row">
+        <button id="newsSaveBtn" type="button">Save</button>
+        <button id="newsResetBtn" type="button">Reset</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Date</th>
+            <th>Visible</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="newsBodyTable"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Event Schedule</h2>
+      <div class="form-grid">
+        <input id="eventTitle" type="text" placeholder="Title" />
+        <input id="eventDate" type="date" />
+        <input id="eventStart" type="time" />
+        <input id="eventEnd" type="time" />
+        <input id="eventLocation" type="text" placeholder="Location" />
+        <input id="eventLink" type="url" placeholder="Link (optional)" />
+        <label class="checkbox">
+          <input id="eventVisible" type="checkbox" checked />
+          Visible
+        </label>
+        <textarea id="eventDesc" rows="4" placeholder="Description"></textarea>
+      </div>
+      <div class="row">
+        <button id="eventSaveBtn" type="button">Save</button>
+        <button id="eventResetBtn" type="button">Reset</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Visible</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="eventsBodyTable"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
       <h2>Upload File</h2>
       <div class="row">
         <input id="fileInput" type="file" />

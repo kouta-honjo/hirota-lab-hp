@@ -43,12 +43,20 @@ body {
 
 .row.between { justify-content: space-between; }
 
-input[type="url"], input[type="file"] {
+input[type="url"], input[type="file"], input[type="text"], input[type="date"], input[type="time"] {
   flex: 1;
   min-width: 220px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
 }
 
 button {
@@ -97,6 +105,25 @@ pre {
   border-radius: 8px;
   padding: 10px;
   font-size: 12px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 12px;
+}
+
+.form-grid textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 640px) {
