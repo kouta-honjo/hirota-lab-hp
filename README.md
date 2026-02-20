@@ -3,9 +3,9 @@
 Google Cloud Storage (GCS) バケット `agridx` の `統合生命科学特論/` 配下ファイルを操作する Flask API です。  
 Cloud Run デプロイと、Vercel での公開HP/管理画面配信を想定しています。
 
-## 公開URL（完成後に記載）
-- 公開HP: `<YOUR_VERCEL_URL>/`
-- 管理画面: `<YOUR_VERCEL_URL>/admin/`
+## 公開URL
+- 公開HP: `https://ui-b26q9lbq9-kouta-honjos-projects.vercel.app/`
+- 管理画面: `https://ui-b26q9lbq9-kouta-honjos-projects.vercel.app/admin/`
 
 ## 実装内容
 - ファイル一覧取得
@@ -31,7 +31,7 @@ Cloud Run デプロイと、Vercel での公開HP/管理画面配信を想定し
 - `GCS_FOLDER_PREFIX` (default: `統合生命科学特論/`)
 - `CMS_PREFIX` (default: `cms/`)
 - `GOOGLE_CLOUD_PROJECT` (ローカル実行時に必要)
-- `ALLOWED_ORIGINS` (推奨: `https://<YOUR_VERCEL_URL>`)
+- `ALLOWED_ORIGINS` (推奨: `https://ui-b26q9lbq9-kouta-honjos-projects.vercel.app`)
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `ADMIN_ALLOW_EMAILS` (例: `admin1@example.com,admin2@example.com`)
 
@@ -77,11 +77,11 @@ gcloud run deploy gcs-backend-service `
   --region asia-northeast2 `
   --allow-unauthenticated `
   --service-account gcs-backend-service-sa@ihomework1.iam.gserviceaccount.com `
-  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",CMS_PREFIX="cms/",ALLOWED_ORIGINS="https://<YOUR_VERCEL_URL>",GOOGLE_OAUTH_CLIENT_ID="<YOUR_CLIENT_ID>",ADMIN_ALLOW_EMAILS="admin1@example.com"
+  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",CMS_PREFIX="cms/",ALLOWED_ORIGINS="https://ui-b26q9lbq9-kouta-honjos-projects.vercel.app",GOOGLE_OAUTH_CLIENT_ID="<YOUR_CLIENT_ID>",ADMIN_ALLOW_EMAILS="admin1@example.com"
 ```
 
 ## Vercel での確認
-1. 管理画面を開く: `<YOUR_VERCEL_URL>/admin/`
+1. 管理画面を開く: `https://ui-b26q9lbq9-kouta-honjos-projects.vercel.app/admin/`
 2. `Backend URL` に Cloud Run のURLを入力
 3. Google Sign-In でログイン
 4. ニュース/行事予定の作成・更新・削除を実行

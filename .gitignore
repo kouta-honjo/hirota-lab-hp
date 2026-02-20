@@ -8,3 +8,5 @@ gcloud-sdk.zip
 
 ui/.vercel/
 *.log
+.vercel
+ihomework1-*.json

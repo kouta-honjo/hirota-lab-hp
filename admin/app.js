@@ -494,7 +494,7 @@ newsResetBtn.addEventListener("click", resetNewsForm);
 eventSaveBtn.addEventListener("click", saveEvent);
 eventResetBtn.addEventListener("click", resetEventForm);
 
-backendUrlInput.value = localStorage.getItem(STORAGE_KEY) || "";
+backendUrlInput.value = localStorage.getItem(STORAGE_KEY) || window.PUBLIC_API_BASE || "";
 const existingToken = getAuthToken();
 if (existingToken) {
   const payload = parseJwt(existingToken);
