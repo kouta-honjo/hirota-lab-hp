@@ -43,13 +43,18 @@ body {
 
 .row.between { justify-content: space-between; }
 
-input[type="url"], input[type="file"], input[type="text"], input[type="date"], input[type="time"] {
+input[type="url"], input[type="file"], input[type="text"],
+input[type="date"], input[type="time"], input[type="email"],
+input[type="number"], select {
   flex: 1;
-  min-width: 220px;
+  min-width: 180px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  font-family: inherit;
 }
+
+select { min-width: 160px; }
 
 textarea {
   width: 100%;
@@ -68,22 +73,14 @@ button {
   cursor: pointer;
 }
 
-button.delete {
-  background: var(--danger);
-}
-
-#signOutBtn {
-  background: #495057;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+button.delete { background: var(--danger); }
+#signOutBtn { background: #495057; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 12px;
 }
 
 th, td {
@@ -91,6 +88,7 @@ th, td {
   border-top: 1px solid var(--line);
   text-align: left;
   vertical-align: middle;
+  font-size: 0.9rem;
 }
 
 th { color: var(--muted); font-weight: 600; }
@@ -130,6 +128,52 @@ pre {
   font-size: 0.9rem;
 }
 
+.mt-8 { margin-top: 8px; }
+
+/* --- Tab Navigation --- */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 2px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px 10px 0 0;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 12px 18px;
+  background: none;
+  color: var(--muted);
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover { color: var(--text); }
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Tab panels - hide/show */
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+  border-radius: 0 0 10px 10px;
+}
+
 @media (max-width: 640px) {
   .row { flex-direction: column; align-items: stretch; }
+  .tab-btn { padding: 10px 12px; font-size: 0.8rem; }
 }

@@ -1,77 +1,138 @@
 import os
-import posixpath
 import json
 from datetime import datetime, timezone
+from io import BytesIO
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from google.cloud import storage
-from google.oauth2 import id_token
+from google.oauth2 import id_token, service_account
 from google.auth.transport import requests as google_requests
-from io import BytesIO
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": os.environ.get("ALLOWED_ORIGINS", "*").split(",")}})
 
-# 環境変数からバケット名とフォルダプレフィックスを取得
-# Cloud Runデプロイ時に設定します
-GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'agridx')
-GCS_FOLDER_PREFIX = os.environ.get('GCS_FOLDER_PREFIX', '統合生命科学特論/') # 末尾のスラッシュは重要
-CMS_PREFIX = os.environ.get('CMS_PREFIX', 'cms/')
+# --- Configuration ---
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '148ZjrTFSswynlTVEydDzF3_LpAs-8cg8')
+CMS_PREFIX = os.environ.get('CMS_PREFIX', 'cms')
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 ADMIN_ALLOW_EMAILS = os.environ.get('ADMIN_ALLOW_EMAILS', '')
+SERVICE_ACCOUNT_FILE = os.environ.get('SERVICE_ACCOUNT_FILE', 'ihomework1-b1a2db2949de.json')
+
+# --- Google Drive Helpers ---
+_drive_service = None
+
+def _get_drive_service():
+    global _drive_service
+    if _drive_service is not None:
+        return _drive_service
+    scopes = ['https://www.googleapis.com/auth/drive']
+    creds = None
+    if os.path.exists(SERVICE_ACCOUNT_FILE):
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=scopes)
+    else:
+        from google.auth import default
+        creds, _ = default(scopes=scopes)
+    _drive_service = build('drive', 'v3', credentials=creds)
+    return _drive_service
 
 
-def _get_bucket():
-    # Delay client creation until request time so import-time crashes do not occur
-    # on platforms where project/env is injected at runtime (e.g. serverless).
-    project = os.environ.get('GOOGLE_CLOUD_PROJECT') or os.environ.get('GCP_PROJECT')
-    client = storage.Client(project=project) if project else storage.Client()
-    return client.bucket(GCS_BUCKET_NAME)
+def _find_file(name, folder_id=None):
+    """Search for a file by name in the given folder. Returns file metadata or None."""
+    service = _get_drive_service()
+    folder = folder_id or GOOGLE_DRIVE_FOLDER_ID
+    q = f"name = '{name}' and '{folder}' in parents and trashed = false"
+    result = service.files().list(q=q, fields='files(id, name, mimeType, size, modifiedTime)',
+                                  pageSize=1).execute()
+    files = result.get('files', [])
+    return files[0] if files else None
 
-def _safe_object_name(filename: str) -> str:
-    # GCS object names use '/' separators. Prevent path traversal and absolute paths.
-    if not filename:
-        raise ValueError('Empty filename')
-    normalized = filename.replace('\\', '/').lstrip('/')
-    parts = [p for p in normalized.split('/') if p not in ('', '.')]
-    if any(p == '..' for p in parts):
-        raise ValueError('Invalid path')
-    return '/'.join(parts)
 
-def _blob_name(filename: str) -> str:
-    safe_name = _safe_object_name(filename)
-    # Use POSIX join to avoid backslashes on Windows
-    return posixpath.join(GCS_FOLDER_PREFIX, safe_name)
+def _find_or_create_folder(name, parent_id=None):
+    """Find or create a subfolder inside the parent folder."""
+    parent = parent_id or GOOGLE_DRIVE_FOLDER_ID
+    existing = _find_file(name, parent)
+    if existing and existing.get('mimeType') == 'application/vnd.google-apps.folder':
+        return existing['id']
+    service = _get_drive_service()
+    metadata = {
+        'name': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parent]
+    }
+    folder = service.files().create(body=metadata, fields='id').execute()
+    return folder['id']
 
-def _cms_blob_name(filename: str) -> str:
-    safe_name = _safe_object_name(filename)
-    return posixpath.join(GCS_FOLDER_PREFIX, CMS_PREFIX, safe_name)
 
-def _utc_now_iso() -> str:
+def _get_cms_folder_id():
+    """Get or create the CMS subfolder inside the Drive folder."""
+    return _find_or_create_folder(CMS_PREFIX)
+
+
+def _read_drive_json(filename):
+    """Read a JSON file from the CMS folder on Drive."""
+    cms_folder = _get_cms_folder_id()
+    file_meta = _find_file(filename, cms_folder)
+    if not file_meta:
+        return None
+    service = _get_drive_service()
+    req = service.files().get_media(fileId=file_meta['id'])
+    buf = BytesIO()
+    downloader = MediaIoBaseDownload(buf, req)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    buf.seek(0)
+    try:
+        return json.loads(buf.read().decode('utf-8'))
+    except Exception:
+        return None
+
+
+def _write_drive_json(filename, data):
+    """Write/update a JSON file in the CMS folder on Drive."""
+    cms_folder = _get_cms_folder_id()
+    body = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
+    media = MediaIoBaseUpload(BytesIO(body), mimetype='application/json', resumable=False)
+    service = _get_drive_service()
+    existing = _find_file(filename, cms_folder)
+    if existing:
+        service.files().update(fileId=existing['id'], media_body=media).execute()
+    else:
+        metadata = {'name': filename, 'parents': [cms_folder]}
+        service.files().create(body=metadata, media_body=media, fields='id').execute()
+
+
+def _list_drive_files(folder_id=None):
+    """List files in a Drive folder."""
+    service = _get_drive_service()
+    fid = folder_id or GOOGLE_DRIVE_FOLDER_ID
+    results = []
+    page_token = None
+    while True:
+        resp = service.files().list(
+            q=f"'{fid}' in parents and trashed = false",
+            fields='nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink)',
+            pageSize=100,
+            pageToken=page_token
+        ).execute()
+        results.extend(resp.get('files', []))
+        page_token = resp.get('nextPageToken')
+        if not page_token:
+            break
+    return results
+
+
+# --- Auth Helpers ---
+def _utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
-def _read_json_blob(blob_name: str, default_payload: dict) -> dict:
-    bucket = _get_bucket()
-    blob = bucket.blob(blob_name)
-    if not blob.exists():
-        return default_payload
-    data = blob.download_as_bytes()
-    if not data:
-        return default_payload
-    try:
-        payload = json.loads(data.decode('utf-8'))
-    except Exception:
-        return default_payload
-    return payload if isinstance(payload, dict) else default_payload
-
-def _write_json_blob(blob_name: str, payload: dict) -> None:
-    bucket = _get_bucket()
-    blob = bucket.blob(blob_name)
-    body = json.dumps(payload, ensure_ascii=False, indent=2)
-    blob.upload_from_string(body, content_type='application/json; charset=utf-8')
 
 def _get_allow_email_set():
     return {e.strip().lower() for e in ADMIN_ALLOW_EMAILS.split(',') if e.strip()}
+
 
 def _require_admin():
     auth_header = request.headers.get('Authorization', '')
@@ -96,124 +157,6 @@ def _require_admin():
         return False, 'Not authorized'
     return True, email
 
-@app.route('/')
-def hello():
-    return 'GCS File Management API is running!'
-
-# ファイル一覧の取得
-@app.route('/files', methods=['GET'])
-def list_files():
-    try:
-        bucket = _get_bucket()
-    except Exception as e:
-        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
-    blobs = bucket.list_blobs(prefix=GCS_FOLDER_PREFIX)
-    
-    file_list = []
-    for blob in blobs:
-        # フォルダ自身や空のオブジェクトを除外
-        if blob.name != GCS_FOLDER_PREFIX and not blob.name.endswith('/'):
-            file_list.append({
-                'name': os.path.basename(blob.name), # フォルダプレフィックスなしのファイル名
-                'full_path': blob.name,
-                'size': blob.size,
-                'updated': blob.updated.isoformat() if blob.updated else None,
-                'md5_hash': blob.md5_hash,
-                'content_type': blob.content_type
-            })
-    return jsonify(file_list)
-
-# ファイルのダウンロード
-@app.route('/download/<path:filename>', methods=['GET'])
-def download_file(filename):
-    try:
-        bucket = _get_bucket()
-    except Exception as e:
-        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
-    try:
-        blob_name = _blob_name(filename)
-    except ValueError:
-        return jsonify({'error': 'Invalid file path'}), 400
-    blob = bucket.blob(blob_name)
-
-    if not blob.exists():
-        return jsonify({'error': 'File not found'}), 404
-
-    try:
-        # ファイルの内容をメモリに読み込む
-        file_content = BytesIO()
-        blob.download_to_file(file_content)
-        file_content.seek(0) # ストリームの先頭に戻す
-        
-        return send_file(
-            file_content,
-            mimetype=blob.content_type if blob.content_type else 'application/octet-stream',
-            as_attachment=True,
-            download_name=filename # クライアントに表示されるファイル名
-        )
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# ファイルのアップロード
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part in the request'}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
-    if file:
-        try:
-            bucket = _get_bucket()
-        except Exception as e:
-            return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
-        try:
-            destination_blob_name = _blob_name(file.filename)
-        except ValueError:
-            return jsonify({'error': 'Invalid file path'}), 400
-        blob = bucket.blob(destination_blob_name)
-
-        try:
-            blob.upload_from_file(file)
-            return jsonify({'message': f'File {file.filename} uploaded successfully to {destination_blob_name}'}), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-# ファイルの削除
-@app.route('/delete/<path:filename>', methods=['DELETE'])
-def delete_file(filename):
-    try:
-        bucket = _get_bucket()
-    except Exception as e:
-        return jsonify({'error': f'Storage client initialization failed: {e}'}), 500
-    try:
-        blob_name = _blob_name(filename)
-    except ValueError:
-        return jsonify({'error': 'Invalid file path'}), 400
-    blob = bucket.blob(blob_name)
-
-    if not blob.exists():
-        return jsonify({'error': 'File not found'}), 404
-
-    try:
-        blob.delete()
-        return jsonify({'message': f'File {filename} deleted successfully from {blob_name}'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-def _init_news_payload():
-    return {
-        'updated_at': _utc_now_iso(),
-        'items': []
-    }
-
-def _init_events_payload():
-    return {
-        'updated_at': _utc_now_iso(),
-        'items': []
-    }
 
 def _next_id(items):
     max_id = 0
@@ -224,42 +167,183 @@ def _next_id(items):
             continue
     return max_id + 1
 
-def _validate_news_input(payload: dict, for_update: bool = False):
+
+# --- Content CRUD Generic ---
+def _init_payload():
+    return {'updated_at': _utc_now_iso(), 'items': []}
+
+
+def _read_content(filename):
+    data = _read_drive_json(filename)
+    if data and isinstance(data, dict):
+        return data
+    return _init_payload()
+
+
+def _write_content(filename, payload):
+    _write_drive_json(filename, payload)
+
+
+# --- Validation ---
+def _validate_news_input(payload, for_update=False):
     errors = []
-    title = payload.get('title')
-    body = payload.get('body')
-    date = payload.get('date')
     if not for_update or 'title' in payload:
+        title = payload.get('title')
         if not isinstance(title, str) or not title.strip():
             errors.append('title is required')
     if not for_update or 'body' in payload:
+        body = payload.get('body')
         if not isinstance(body, str) or not body.strip():
             errors.append('body is required')
     if not for_update or 'date' in payload:
+        date = payload.get('date')
         if not isinstance(date, str) or not date.strip():
             errors.append('date is required')
     return errors
 
-def _validate_event_input(payload: dict, for_update: bool = False):
+
+def _validate_event_input(payload, for_update=False):
     errors = []
-    title = payload.get('title')
-    date = payload.get('date')
     if not for_update or 'title' in payload:
+        title = payload.get('title')
         if not isinstance(title, str) or not title.strip():
             errors.append('title is required')
     if not for_update or 'date' in payload:
+        date = payload.get('date')
         if not isinstance(date, str) or not date.strip():
             errors.append('date is required')
     return errors
 
+
+def _validate_member_input(payload, for_update=False):
+    errors = []
+    if not for_update or 'name' in payload:
+        name = payload.get('name')
+        if not isinstance(name, str) or not name.strip():
+            errors.append('name is required')
+    return errors
+
+
+def _validate_publication_input(payload, for_update=False):
+    errors = []
+    if not for_update or 'title' in payload:
+        title = payload.get('title')
+        if not isinstance(title, str) or not title.strip():
+            errors.append('title is required')
+    return errors
+
+
+def _validate_research_input(payload, for_update=False):
+    errors = []
+    if not for_update or 'title' in payload:
+        title = payload.get('title')
+        if not isinstance(title, str) or not title.strip():
+            errors.append('title is required')
+    return errors
+
+
+# ============================================================
+# Routes
+# ============================================================
+
+@app.route('/')
+def hello():
+    return 'Hirota Lab CMS API is running!'
+
+
+# --- Drive File Browser ---
+@app.route('/drive/files', methods=['GET'])
+def drive_list_files():
+    try:
+        folder_id = request.args.get('folder_id', GOOGLE_DRIVE_FOLDER_ID)
+        files = _list_drive_files(folder_id)
+        return jsonify(files)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/drive/file/<file_id>', methods=['GET'])
+def drive_get_file(file_id):
+    try:
+        service = _get_drive_service()
+        meta = service.files().get(fileId=file_id, fields='id,name,mimeType,size').execute()
+        req = service.files().get_media(fileId=file_id)
+        buf = BytesIO()
+        downloader = MediaIoBaseDownload(buf, req)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        buf.seek(0)
+        return send_file(
+            buf,
+            mimetype=meta.get('mimeType', 'application/octet-stream'),
+            as_attachment=True,
+            download_name=meta.get('name', 'file')
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- Upload File to Drive ---
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    try:
+        service = _get_drive_service()
+        metadata = {'name': file.filename, 'parents': [GOOGLE_DRIVE_FOLDER_ID]}
+        media = MediaIoBaseUpload(file.stream, mimetype=file.content_type or 'application/octet-stream')
+        created = service.files().create(body=metadata, media_body=media, fields='id,name').execute()
+        return jsonify({'message': f'File {file.filename} uploaded', 'id': created['id']}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- Delete File from Drive ---
+@app.route('/delete/<file_id>', methods=['DELETE'])
+def delete_file(file_id):
+    try:
+        service = _get_drive_service()
+        service.files().delete(fileId=file_id).execute()
+        return jsonify({'message': 'File deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- List files (legacy compat) ---
+@app.route('/files', methods=['GET'])
+def list_files():
+    try:
+        files = _list_drive_files()
+        file_list = []
+        for f in files:
+            file_list.append({
+                'name': f.get('name', ''),
+                'id': f.get('id', ''),
+                'size': f.get('size'),
+                'updated': f.get('modifiedTime'),
+                'content_type': f.get('mimeType', ''),
+                'webViewLink': f.get('webViewLink', '')
+            })
+        return jsonify(file_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# NEWS CRUD
+# ============================================================
 @app.route('/content/news', methods=['GET'])
 def get_news():
     try:
-        blob_name = _cms_blob_name('news.json')
-        payload = _read_json_blob(blob_name, _init_news_payload())
+        payload = _read_content('news.json')
         return jsonify(payload)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/content/news', methods=['POST'])
 def create_news():
@@ -267,12 +351,11 @@ def create_news():
     if not ok:
         return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
-    errors = _validate_news_input(data, for_update=False)
+    errors = _validate_news_input(data)
     if errors:
         return jsonify({'error': 'Validation failed', 'details': errors}), 400
     try:
-        blob_name = _cms_blob_name('news.json')
-        payload = _read_json_blob(blob_name, _init_news_payload())
+        payload = _read_content('news.json')
         items = payload.get('items', [])
         now = _utc_now_iso()
         item = {
@@ -288,13 +371,14 @@ def create_news():
         items.append(item)
         payload['items'] = items
         payload['updated_at'] = now
-        _write_json_blob(blob_name, payload)
+        _write_content('news.json', payload)
         return jsonify(item), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/content/news/<int:item_id>', methods=['PUT'])
-def update_news(item_id: int):
+def update_news(item_id):
     ok, reason = _require_admin()
     if not ok:
         return jsonify({'error': reason}), 401
@@ -303,57 +387,55 @@ def update_news(item_id: int):
     if errors:
         return jsonify({'error': 'Validation failed', 'details': errors}), 400
     try:
-        blob_name = _cms_blob_name('news.json')
-        payload = _read_json_blob(blob_name, _init_news_payload())
+        payload = _read_content('news.json')
         items = payload.get('items', [])
         now = _utc_now_iso()
         for item in items:
             if item.get('id') == item_id:
-                if 'title' in data:
-                    item['title'] = data.get('title', '').strip()
-                if 'body' in data:
-                    item['body'] = data.get('body', '').strip()
-                if 'date' in data:
-                    item['date'] = data.get('date', '').strip()
-                if 'link' in data:
-                    item['link'] = (data.get('link') or '').strip()
+                for key in ('title', 'body', 'date', 'link'):
+                    if key in data:
+                        item[key] = (data.get(key) or '').strip()
                 if 'visible' in data:
                     item['visible'] = bool(data.get('visible'))
                 item['updated_at'] = now
                 payload['updated_at'] = now
-                _write_json_blob(blob_name, payload)
+                _write_content('news.json', payload)
                 return jsonify(item)
         return jsonify({'error': 'Item not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/content/news/<int:item_id>', methods=['DELETE'])
-def delete_news(item_id: int):
+def delete_news(item_id):
     ok, reason = _require_admin()
     if not ok:
         return jsonify({'error': reason}), 401
     try:
-        blob_name = _cms_blob_name('news.json')
-        payload = _read_json_blob(blob_name, _init_news_payload())
+        payload = _read_content('news.json')
         items = payload.get('items', [])
-        remaining = [item for item in items if item.get('id') != item_id]
+        remaining = [i for i in items if i.get('id') != item_id]
         if len(remaining) == len(items):
             return jsonify({'error': 'Item not found'}), 404
         payload['items'] = remaining
         payload['updated_at'] = _utc_now_iso()
-        _write_json_blob(blob_name, payload)
+        _write_content('news.json', payload)
         return jsonify({'message': 'Deleted'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# ============================================================
+# EVENTS CRUD
+# ============================================================
 @app.route('/content/events', methods=['GET'])
 def get_events():
     try:
-        blob_name = _cms_blob_name('events.json')
-        payload = _read_json_blob(blob_name, _init_events_payload())
+        payload = _read_content('events.json')
         return jsonify(payload)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/content/events', methods=['POST'])
 def create_event():
@@ -361,12 +443,11 @@ def create_event():
     if not ok:
         return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
-    errors = _validate_event_input(data, for_update=False)
+    errors = _validate_event_input(data)
     if errors:
         return jsonify({'error': 'Validation failed', 'details': errors}), 400
     try:
-        blob_name = _cms_blob_name('events.json')
-        payload = _read_json_blob(blob_name, _init_events_payload())
+        payload = _read_content('events.json')
         items = payload.get('items', [])
         now = _utc_now_iso()
         item = {
@@ -385,13 +466,14 @@ def create_event():
         items.append(item)
         payload['items'] = items
         payload['updated_at'] = now
-        _write_json_blob(blob_name, payload)
+        _write_content('events.json', payload)
         return jsonify(item), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/content/events/<int:item_id>', methods=['PUT'])
-def update_event(item_id: int):
+def update_event(item_id):
     ok, reason = _require_admin()
     if not ok:
         return jsonify({'error': reason}), 401
@@ -400,77 +482,398 @@ def update_event(item_id: int):
     if errors:
         return jsonify({'error': 'Validation failed', 'details': errors}), 400
     try:
-        blob_name = _cms_blob_name('events.json')
-        payload = _read_json_blob(blob_name, _init_events_payload())
+        payload = _read_content('events.json')
         items = payload.get('items', [])
         now = _utc_now_iso()
         for item in items:
             if item.get('id') == item_id:
-                if 'title' in data:
-                    item['title'] = data.get('title', '').strip()
-                if 'date' in data:
-                    item['date'] = data.get('date', '').strip()
-                if 'time_start' in data:
-                    item['time_start'] = (data.get('time_start') or '').strip()
-                if 'time_end' in data:
-                    item['time_end'] = (data.get('time_end') or '').strip()
-                if 'location' in data:
-                    item['location'] = (data.get('location') or '').strip()
-                if 'description' in data:
-                    item['description'] = (data.get('description') or '').strip()
-                if 'link' in data:
-                    item['link'] = (data.get('link') or '').strip()
+                for key in ('title', 'date', 'time_start', 'time_end', 'location', 'description', 'link'):
+                    if key in data:
+                        item[key] = (data.get(key) or '').strip()
                 if 'visible' in data:
                     item['visible'] = bool(data.get('visible'))
                 item['updated_at'] = now
                 payload['updated_at'] = now
-                _write_json_blob(blob_name, payload)
+                _write_content('events.json', payload)
                 return jsonify(item)
         return jsonify({'error': 'Item not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/content/events/<int:item_id>', methods=['DELETE'])
-def delete_event(item_id: int):
+def delete_event(item_id):
     ok, reason = _require_admin()
     if not ok:
         return jsonify({'error': reason}), 401
     try:
-        blob_name = _cms_blob_name('events.json')
-        payload = _read_json_blob(blob_name, _init_events_payload())
+        payload = _read_content('events.json')
         items = payload.get('items', [])
-        remaining = [item for item in items if item.get('id') != item_id]
+        remaining = [i for i in items if i.get('id') != item_id]
         if len(remaining) == len(items):
             return jsonify({'error': 'Item not found'}), 404
         payload['items'] = remaining
         payload['updated_at'] = _utc_now_iso()
-        _write_json_blob(blob_name, payload)
+        _write_content('events.json', payload)
         return jsonify({'message': 'Deleted'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    # ローカルテスト用 (本番環境ではCloud RunがGunicornなどを介して実行)
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
+# ============================================================
+# MEMBERS CRUD
+# ============================================================
+@app.route('/content/members', methods=['GET'])
+def get_members():
+    try:
+        payload = _read_content('members.json')
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/members', methods=['POST'])
+def create_member():
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_member_input(data)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('members.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        item = {
+            'id': _next_id(items),
+            'name': data.get('name', '').strip(),
+            'name_en': (data.get('name_en') or '').strip(),
+            'role': (data.get('role') or 'bachelor').strip(),
+            'title': (data.get('title') or '').strip(),
+            'research_interest': (data.get('research_interest') or '').strip(),
+            'photo_url': (data.get('photo_url') or '').strip(),
+            'email': (data.get('email') or '').strip(),
+            'year_joined': data.get('year_joined', ''),
+            'order': data.get('order', 99),
+            'visible': bool(data.get('visible', True)),
+            'created_at': now,
+            'updated_at': now
+        }
+        items.append(item)
+        payload['items'] = items
+        payload['updated_at'] = now
+        _write_content('members.json', payload)
+        return jsonify(item), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/members/<int:item_id>', methods=['PUT'])
+def update_member(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_member_input(data, for_update=True)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('members.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        for item in items:
+            if item.get('id') == item_id:
+                for key in ('name', 'name_en', 'role', 'title', 'research_interest',
+                            'photo_url', 'email'):
+                    if key in data:
+                        item[key] = (data.get(key) or '').strip()
+                if 'year_joined' in data:
+                    item['year_joined'] = data.get('year_joined', '')
+                if 'order' in data:
+                    item['order'] = data.get('order', 99)
+                if 'visible' in data:
+                    item['visible'] = bool(data.get('visible'))
+                item['updated_at'] = now
+                payload['updated_at'] = now
+                _write_content('members.json', payload)
+                return jsonify(item)
+        return jsonify({'error': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/members/<int:item_id>', methods=['DELETE'])
+def delete_member(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    try:
+        payload = _read_content('members.json')
+        items = payload.get('items', [])
+        remaining = [i for i in items if i.get('id') != item_id]
+        if len(remaining) == len(items):
+            return jsonify({'error': 'Item not found'}), 404
+        payload['items'] = remaining
+        payload['updated_at'] = _utc_now_iso()
+        _write_content('members.json', payload)
+        return jsonify({'message': 'Deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# PUBLICATIONS CRUD
+# ============================================================
+@app.route('/content/publications', methods=['GET'])
+def get_publications():
+    try:
+        payload = _read_content('publications.json')
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/publications', methods=['POST'])
+def create_publication():
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_publication_input(data)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('publications.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        item = {
+            'id': _next_id(items),
+            'title': data.get('title', '').strip(),
+            'authors': (data.get('authors') or '').strip(),
+            'journal': (data.get('journal') or '').strip(),
+            'year': (data.get('year') or '').strip() if isinstance(data.get('year'), str) else str(data.get('year', '')),
+            'volume': (data.get('volume') or '').strip() if isinstance(data.get('volume'), str) else str(data.get('volume', '')),
+            'pages': (data.get('pages') or '').strip(),
+            'doi': (data.get('doi') or '').strip(),
+            'category': (data.get('category') or 'paper').strip(),
+            'visible': bool(data.get('visible', True)),
+            'order': data.get('order', 99),
+            'created_at': now,
+            'updated_at': now
+        }
+        items.append(item)
+        payload['items'] = items
+        payload['updated_at'] = now
+        _write_content('publications.json', payload)
+        return jsonify(item), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/publications/<int:item_id>', methods=['PUT'])
+def update_publication(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_publication_input(data, for_update=True)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('publications.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        for item in items:
+            if item.get('id') == item_id:
+                for key in ('title', 'authors', 'journal', 'year', 'volume', 'pages', 'doi', 'category'):
+                    if key in data:
+                        val = data.get(key) or ''
+                        item[key] = val.strip() if isinstance(val, str) else str(val)
+                if 'order' in data:
+                    item['order'] = data.get('order', 99)
+                if 'visible' in data:
+                    item['visible'] = bool(data.get('visible'))
+                item['updated_at'] = now
+                payload['updated_at'] = now
+                _write_content('publications.json', payload)
+                return jsonify(item)
+        return jsonify({'error': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/publications/<int:item_id>', methods=['DELETE'])
+def delete_publication(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    try:
+        payload = _read_content('publications.json')
+        items = payload.get('items', [])
+        remaining = [i for i in items if i.get('id') != item_id]
+        if len(remaining) == len(items):
+            return jsonify({'error': 'Item not found'}), 404
+        payload['items'] = remaining
+        payload['updated_at'] = _utc_now_iso()
+        _write_content('publications.json', payload)
+        return jsonify({'message': 'Deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# RESEARCH CRUD
+# ============================================================
+@app.route('/content/research', methods=['GET'])
+def get_research():
+    try:
+        payload = _read_content('research.json')
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/research', methods=['POST'])
+def create_research():
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_research_input(data)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('research.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        item = {
+            'id': _next_id(items),
+            'title': data.get('title', '').strip(),
+            'title_en': (data.get('title_en') or '').strip(),
+            'description': (data.get('description') or '').strip(),
+            'image_url': (data.get('image_url') or '').strip(),
+            'order': data.get('order', 99),
+            'visible': bool(data.get('visible', True)),
+            'created_at': now,
+            'updated_at': now
+        }
+        items.append(item)
+        payload['items'] = items
+        payload['updated_at'] = now
+        _write_content('research.json', payload)
+        return jsonify(item), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/research/<int:item_id>', methods=['PUT'])
+def update_research(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    data = request.get_json(silent=True) or {}
+    errors = _validate_research_input(data, for_update=True)
+    if errors:
+        return jsonify({'error': 'Validation failed', 'details': errors}), 400
+    try:
+        payload = _read_content('research.json')
+        items = payload.get('items', [])
+        now = _utc_now_iso()
+        for item in items:
+            if item.get('id') == item_id:
+                for key in ('title', 'title_en', 'description', 'image_url'):
+                    if key in data:
+                        item[key] = (data.get(key) or '').strip()
+                if 'order' in data:
+                    item['order'] = data.get('order', 99)
+                if 'visible' in data:
+                    item['visible'] = bool(data.get('visible'))
+                item['updated_at'] = now
+                payload['updated_at'] = now
+                _write_content('research.json', payload)
+                return jsonify(item)
+        return jsonify({'error': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/content/research/<int:item_id>', methods=['DELETE'])
+def delete_research(item_id):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    try:
+        payload = _read_content('research.json')
+        items = payload.get('items', [])
+        remaining = [i for i in items if i.get('id') != item_id]
+        if len(remaining) == len(items):
+            return jsonify({'error': 'Item not found'}), 404
+        payload['items'] = remaining
+        payload['updated_at'] = _utc_now_iso()
+        _write_content('research.json', payload)
+        return jsonify({'message': 'Deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# PUBLIC READ-ONLY ENDPOINTS
+# ============================================================
 @app.route('/public/news', methods=['GET'])
 def public_news():
     try:
-        blob_name = _cms_blob_name('news.json')
-        payload = _read_json_blob(blob_name, _init_news_payload())
-        items = [item for item in payload.get('items', []) if item.get('visible', True)]
+        payload = _read_content('news.json')
+        items = [i for i in payload.get('items', []) if i.get('visible', True)]
         items.sort(key=lambda x: x.get('date', ''), reverse=True)
         return jsonify({'items': items})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/public/events', methods=['GET'])
 def public_events():
     try:
-        blob_name = _cms_blob_name('events.json')
-        payload = _read_json_blob(blob_name, _init_events_payload())
-        items = [item for item in payload.get('items', []) if item.get('visible', True)]
+        payload = _read_content('events.json')
+        items = [i for i in payload.get('items', []) if i.get('visible', True)]
         items.sort(key=lambda x: x.get('date', ''), reverse=True)
         return jsonify({'items': items})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/public/members', methods=['GET'])
+def public_members():
+    try:
+        payload = _read_content('members.json')
+        items = [i for i in payload.get('items', []) if i.get('visible', True)]
+        items.sort(key=lambda x: x.get('order', 99))
+        return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/public/publications', methods=['GET'])
+def public_publications():
+    try:
+        payload = _read_content('publications.json')
+        items = [i for i in payload.get('items', []) if i.get('visible', True)]
+        items.sort(key=lambda x: x.get('year', ''), reverse=True)
+        return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/public/research', methods=['GET'])
+def public_research():
+    try:
+        payload = _read_content('research.json')
+        items = [i for i in payload.get('items', []) if i.get('visible', True)]
+        items.sort(key=lambda x: x.get('order', 99))
+        return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

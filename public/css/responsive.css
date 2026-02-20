@@ -1,0 +1,96 @@
+/* ===== Responsive Styles ===== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .hero { height: 300px; }
+  .hero-title { font-size: 1.6rem; }
+  .hero-subtitle { font-size: 0.95rem; }
+
+  .research-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .professor-profile {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .professor-photo {
+    width: 150px;
+    height: 200px;
+  }
+
+  .contact-info dl {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-info dt {
+    margin-top: 8px;
+  }
+
+  .contact-map { height: 300px; }
+
+  .members-list {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  /* Navigation hamburger */
+  .site-nav ul {
+    display: none;
+    flex-direction: column;
+  }
+
+  .site-nav ul.open {
+    display: flex;
+  }
+
+  .site-nav a {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .section { padding: 40px 16px; }
+  .section-title { font-size: 1.3rem; }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .hero { height: 240px; }
+  .hero-title { font-size: 1.3rem; }
+  .hero-subtitle { font-size: 0.85rem; }
+
+  .header-lab-name { font-size: 1.2rem; }
+
+  .news-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pub-tabs {
+    overflow-x: auto;
+  }
+
+  .pub-tab {
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .members-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .member-photo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .cta-banner { padding: 32px 16px; }
+  .cta-banner h2 { font-size: 1.2rem; }
+}

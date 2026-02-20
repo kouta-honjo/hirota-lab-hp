@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GCS File Console</title>
+  <title>Hirota Lab CMS Console</title>
   <link rel="stylesheet" href="./styles.css" />
   <script src="/api/config"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -11,8 +11,8 @@
 <body>
   <main class="container">
     <header class="hero">
-      <h1>GCS File Console</h1>
-      <p>Connect this UI to your Flask backend and manage files.</p>
+      <h1>Hirota Lab CMS Console</h1>
+      <p>Manage content for the laboratory website.</p>
     </header>
 
     <section class="panel">
@@ -22,7 +22,6 @@
         <button id="saveUrlBtn" type="button">Save</button>
         <button id="healthBtn" type="button">Health Check</button>
       </div>
-      <p class="hint">Expected endpoints: <code>/files</code>, <code>/upload</code>, <code>/download/:filename</code>, <code>/delete/:filename</code></p>
     </section>
 
     <section class="panel">
@@ -34,7 +33,18 @@
       <p class="hint" id="authStatus">Not signed in</p>
     </section>
 
-    <section class="panel">
+    <!-- Tab Navigation -->
+    <div class="tab-nav" id="tabNav">
+      <button class="tab-btn active" data-tab="news">News</button>
+      <button class="tab-btn" data-tab="events">Events</button>
+      <button class="tab-btn" data-tab="members">Members</button>
+      <button class="tab-btn" data-tab="publications">Publications</button>
+      <button class="tab-btn" data-tab="research">Research</button>
+      <button class="tab-btn" data-tab="files">Files (Drive)</button>
+    </div>
+
+    <!-- NEWS TAB -->
+    <section class="panel tab-panel active" data-tab="news">
       <h2>News Release</h2>
       <div class="form-grid">
         <input id="newsTitle" type="text" placeholder="Title" />
@@ -52,18 +62,14 @@
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Title</th>
-            <th>Date</th>
-            <th>Visible</th>
-            <th>Actions</th>
-          </tr>
+          <tr><th>Title</th><th>Date</th><th>Visible</th><th>Actions</th></tr>
         </thead>
         <tbody id="newsBodyTable"></tbody>
       </table>
     </section>
 
-    <section class="panel">
+    <!-- EVENTS TAB -->
+    <section class="panel tab-panel" data-tab="events">
       <h2>Event Schedule</h2>
       <div class="form-grid">
         <input id="eventTitle" type="text" placeholder="Title" />
@@ -84,39 +90,127 @@
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Title</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Visible</th>
-            <th>Actions</th>
-          </tr>
+          <tr><th>Title</th><th>Date</th><th>Time</th><th>Visible</th><th>Actions</th></tr>
         </thead>
         <tbody id="eventsBodyTable"></tbody>
       </table>
     </section>
 
-    <section class="panel">
-      <h2>Upload File</h2>
+    <!-- MEMBERS TAB -->
+    <section class="panel tab-panel" data-tab="members">
+      <h2>Members</h2>
+      <div class="form-grid">
+        <input id="memberName" type="text" placeholder="Name (JP)" />
+        <input id="memberNameEn" type="text" placeholder="Name (EN)" />
+        <select id="memberRole">
+          <option value="professor">Professor</option>
+          <option value="associate_professor">Associate Professor</option>
+          <option value="assistant_professor">Assistant Professor</option>
+          <option value="postdoc">Postdoc</option>
+          <option value="doctor">Doctor</option>
+          <option value="master" selected>Master</option>
+          <option value="bachelor">Bachelor</option>
+          <option value="research_student">Research Student</option>
+          <option value="alumni">Alumni</option>
+        </select>
+        <input id="memberTitle" type="text" placeholder="Title / Position" />
+        <input id="memberEmail" type="email" placeholder="Email" />
+        <input id="memberPhotoUrl" type="url" placeholder="Photo URL" />
+        <input id="memberYearJoined" type="text" placeholder="Year Joined" />
+        <input id="memberOrder" type="number" placeholder="Order" value="99" />
+        <label class="checkbox">
+          <input id="memberVisible" type="checkbox" checked />
+          Visible
+        </label>
+        <textarea id="memberInterest" rows="3" placeholder="Research Interest"></textarea>
+      </div>
+      <div class="row">
+        <button id="memberSaveBtn" type="button">Save</button>
+        <button id="memberResetBtn" type="button">Reset</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Order</th><th>Visible</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="membersBodyTable"></tbody>
+      </table>
+    </section>
+
+    <!-- PUBLICATIONS TAB -->
+    <section class="panel tab-panel" data-tab="publications">
+      <h2>Publications</h2>
+      <div class="form-grid">
+        <input id="pubTitle" type="text" placeholder="Title" />
+        <input id="pubAuthors" type="text" placeholder="Authors" />
+        <input id="pubJournal" type="text" placeholder="Journal" />
+        <input id="pubYear" type="text" placeholder="Year" />
+        <input id="pubVolume" type="text" placeholder="Volume" />
+        <input id="pubPages" type="text" placeholder="Pages" />
+        <input id="pubDoi" type="text" placeholder="DOI" />
+        <select id="pubCategory">
+          <option value="paper" selected>Paper</option>
+          <option value="book">Book</option>
+          <option value="patent">Patent</option>
+          <option value="presentation">Presentation</option>
+        </select>
+        <input id="pubOrder" type="number" placeholder="Order" value="99" />
+        <label class="checkbox">
+          <input id="pubVisible" type="checkbox" checked />
+          Visible
+        </label>
+      </div>
+      <div class="row">
+        <button id="pubSaveBtn" type="button">Save</button>
+        <button id="pubResetBtn" type="button">Reset</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Authors</th><th>Year</th><th>Category</th><th>Visible</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="pubsBodyTable"></tbody>
+      </table>
+    </section>
+
+    <!-- RESEARCH TAB -->
+    <section class="panel tab-panel" data-tab="research">
+      <h2>Research Topics</h2>
+      <div class="form-grid">
+        <input id="researchTitle" type="text" placeholder="Title (JP)" />
+        <input id="researchTitleEn" type="text" placeholder="Title (EN)" />
+        <input id="researchImageUrl" type="url" placeholder="Image URL" />
+        <input id="researchOrder" type="number" placeholder="Order" value="99" />
+        <label class="checkbox">
+          <input id="researchVisible" type="checkbox" checked />
+          Visible
+        </label>
+        <textarea id="researchDesc" rows="4" placeholder="Description"></textarea>
+      </div>
+      <div class="row">
+        <button id="researchSaveBtn" type="button">Save</button>
+        <button id="researchResetBtn" type="button">Reset</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Order</th><th>Visible</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="researchBodyTable"></tbody>
+      </table>
+    </section>
+
+    <!-- FILES TAB (Drive) -->
+    <section class="panel tab-panel" data-tab="files">
+      <h2>Files (Google Drive)</h2>
       <div class="row">
         <input id="fileInput" type="file" />
         <button id="uploadBtn" type="button">Upload</button>
       </div>
-    </section>
-
-    <section class="panel">
-      <div class="row between">
-        <h2>Files</h2>
+      <div class="row between mt-8">
+        <h3>File List</h3>
         <button id="refreshBtn" type="button">Refresh</button>
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Size</th>
-            <th>Updated</th>
-            <th>Actions</th>
-          </tr>
+          <tr><th>Name</th><th>Size</th><th>Updated</th><th>Actions</th></tr>
         </thead>
         <tbody id="filesBody"></tbody>
       </table>
