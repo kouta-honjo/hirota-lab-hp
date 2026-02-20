@@ -1,21 +1,21 @@
 /* ===== Responsive Styles ===== */
 
-/* Tablet */
-@media (max-width: 768px) {
-  .hero { height: 300px; }
-  .hero-title { font-size: 1.6rem; }
-  .hero-subtitle { font-size: 0.95rem; }
-
-  .research-grid {
+@media (max-width: 820px) {
+  .main-wrap {
     grid-template-columns: 1fr;
+    gap: 32px;
   }
+  .hero {
+    aspect-ratio: 16 / 7;
+  }
+  .header-nav { display: none; }
+  .nav-toggle { display: block; }
 
   .professor-profile {
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
-
   .professor-photo {
     width: 150px;
     height: 200px;
@@ -24,73 +24,49 @@
   .contact-info dl {
     grid-template-columns: 1fr;
   }
-
-  .contact-info dt {
-    margin-top: 8px;
-  }
-
+  .contact-info dt { margin-top: 8px; }
   .contact-map { height: 300px; }
-
-  .members-list {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-
-  /* Navigation hamburger */
-  .site-nav ul {
-    display: none;
-    flex-direction: column;
-  }
-
-  .site-nav ul.open {
-    display: flex;
-  }
-
-  .site-nav a {
-    padding: 14px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .nav-toggle {
-    display: block;
-  }
-
-  .section { padding: 40px 16px; }
-  .section-title { font-size: 1.3rem; }
 }
 
-/* Mobile */
-@media (max-width: 480px) {
-  .hero { height: 240px; }
-  .hero-title { font-size: 1.3rem; }
-  .hero-subtitle { font-size: 0.85rem; }
+@media (max-width: 600px) {
+  html { font-size: 14px; }
 
-  .header-lab-name { font-size: 1.2rem; }
+  .hero {
+    aspect-ratio: 16 / 9;
+    min-height: 200px;
+  }
+  .hero-content { padding: 16px 16px; }
+  .hero-text-box {
+    padding: 14px 18px;
+    max-width: 100%;
+  }
+
+  .section { padding: 32px 16px; }
 
   .news-item {
-    flex-direction: column;
-    gap: 4px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .news-thumb {
+    width: 100%;
+    height: 160px;
   }
 
-  .pub-tabs {
-    overflow-x: auto;
-  }
-
+  .pub-tabs { overflow-x: auto; }
   .pub-tab {
     white-space: nowrap;
     padding: 8px 14px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .members-list {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
+  .member-photo { width: 80px; height: 80px; }
 
-  .member-photo {
-    width: 80px;
-    height: 80px;
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
   }
-
-  .cta-banner { padding: 32px 16px; }
-  .cta-banner h2 { font-size: 1.2rem; }
 }

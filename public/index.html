@@ -3,86 +3,192 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>廣田研究室 - 広島大学大学院 統合生命科学研究科</title>
-  <meta name="description" content="広島大学大学院 統合生命科学研究科 廣田研究室。微生物のリン代謝に関する研究を行っています。">
+  <title>環境微生物工学研究室 - 広島大学大学院 統合生命科学研究科</title>
+  <meta name="description" content="広島大学大学院 統合生命科学研究科 生物工学プログラム 環境微生物工学研究室。微生物のリン代謝に関する研究を行っています。">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
-  <!-- Header (injected by app.js) -->
-  <div id="site-header"></div>
 
-  <!-- Hero Section -->
-  <section class="hero" style="background-image: url('img/hero.jpg');">
+  <!-- ===== Header ===== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <span class="header-logo-sub">広島大学大学院 統合生命科学研究科 生物工学プログラム</span>
+        <span class="header-logo-main">環境微生物工学研究室</span>
+      </div>
+      <nav>
+        <ul class="header-nav">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="research.html">Research</a></li>
+          <li><a href="members.html">Members</a></li>
+          <li><a href="publications.html">Publications</a></li>
+          <li><a href="access.html">Access</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="hero-bg"></div>
     <div class="hero-content">
-      <h1 class="hero-title">微生物のリン代謝を解明し<br>持続可能な社会に貢献する</h1>
-      <p class="hero-subtitle">Exploring Microbial Phosphorus Metabolism for a Sustainable Future</p>
+      <div class="hero-text-box">
+        <div class="hero-program">広島大学大学院 統合生命科学研究科 生物工学プログラム</div>
+        <h1 class="hero-lab">環境微生物工学研究室</h1>
+        <p class="hero-en">Division of Integrated Sciences for Life,<br>Graduate School of Hiroshima University — Hirota Lab</p>
+        <p class="hero-tagline">微生物のリン代謝を解明し 持続可能な社会に貢献する</p>
+      </div>
     </div>
   </section>
 
-  <!-- News Section -->
-  <section class="section">
-    <div class="section-inner">
-      <h2 class="section-title">News <span class="section-title-en">お知らせ</span></h2>
-      <ul class="news-list" id="news-list">
-        <li class="loading">読み込み中</li>
+  <!-- ===== Main 2-Column Layout ===== -->
+  <div class="main-wrap">
+
+    <!-- Left: News -->
+    <main>
+      <h2 class="section-heading">News＆Awards <span class="sub">お知らせ・受賞</span></h2>
+
+      <ul class="news-list">
+        <!-- News Item 1 -->
+        <li class="news-item">
+          <div class="news-thumb">
+            <div class="news-thumb-placeholder">PHOTO</div>
+          </div>
+          <div class="news-body">
+            <div class="news-date">2025/04/01</div>
+            <h3 class="news-title"><a href="#">新年度がスタートしました</a></h3>
+            <p class="news-desc">新しいメンバーが研究室に加わり、2025年度の研究活動が始まりました。今年度も微生物のリン代謝に関する研究を精力的に進めてまいります。</p>
+          </div>
+        </li>
+
+        <!-- News Item 2 -->
+        <li class="news-item">
+          <div class="news-thumb">
+            <div class="news-thumb-placeholder">PHOTO</div>
+          </div>
+          <div class="news-body">
+            <div class="news-date">2025/03/25</div>
+            <h3 class="news-title"><a href="#">学位記授与式が挙行されました</a></h3>
+            <p class="news-desc">修士課程・学部課程の学生が廣田研究室より巣立ちました。新たな環境でのご活躍を研究室一同、祈念しています。ご卒業おめでとうございます。</p>
+          </div>
+        </li>
+
+        <!-- News Item 3 -->
+        <li class="news-item">
+          <div class="news-thumb">
+            <div class="news-thumb-placeholder">PHOTO</div>
+          </div>
+          <div class="news-body">
+            <div class="news-date">2025/02/15</div>
+            <h3 class="news-title"><a href="#">論文がEnvironmental Microbiology誌に掲載されました</a></h3>
+            <p class="news-desc">微生物による還元型リン化合物の酸化メカニズムに関する研究成果がEnvironmental Microbiology誌に掲載されました。詳細はPublicationsページをご覧ください。</p>
+          </div>
+        </li>
+
+        <!-- News Item 4 -->
+        <li class="news-item">
+          <div class="news-thumb">
+            <div class="news-thumb-placeholder">PHOTO</div>
+          </div>
+          <div class="news-body">
+            <div class="news-date">2024/11/20</div>
+            <h3 class="news-title"><a href="#">日本微生物生態学会にて学生が発表しました</a></h3>
+            <p class="news-desc">微生物生態学会年次大会にて研究室の学生が口頭発表およびポスター発表を行いました。活発な議論が行われ、大変有意義な学会参加となりました。</p>
+          </div>
+        </li>
+
+        <!-- News Item 5 -->
+        <li class="news-item">
+          <div class="news-thumb">
+            <div class="news-thumb-placeholder">PHOTO</div>
+          </div>
+          <div class="news-body">
+            <div class="news-date">2024/09/10</div>
+            <h3 class="news-title"><a href="#">研究室HPを更新しました</a></h3>
+            <p class="news-desc">研究室のホームページをリニューアルしました。研究内容やメンバー情報を更新しています。引き続き廣田研究室をよろしくお願いいたします。</p>
+          </div>
+        </li>
       </ul>
-    </div>
-  </section>
 
-  <!-- Research Overview -->
-  <section class="section section-alt">
-    <div class="section-inner">
-      <h2 class="section-title">Research <span class="section-title-en">研究テーマ</span></h2>
-      <div class="research-grid">
-        <div class="research-card">
-          <div class="research-card-img" style="background: linear-gradient(135deg, #2980b9, #1a5276); display:flex; align-items:center; justify-content:center; color:#fff; font-size:2rem;">P</div>
-          <div class="research-card-body">
-            <h3 class="research-card-title">リンの生物循環</h3>
-            <p class="research-card-desc">地球規模でのリンの循環における微生物の役割を解明し、持続可能なリン利用に貢献します。</p>
-          </div>
-        </div>
-        <div class="research-card">
-          <div class="research-card-img" style="background: linear-gradient(135deg, #27ae60, #1a8c4e); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.5rem;">Metabolism</div>
-          <div class="research-card-body">
-            <h3 class="research-card-title">バクテリアのリン代謝経路の解明と応用</h3>
-            <p class="research-card-desc">細菌におけるリン酸の取り込み・蓄積・放出メカニズムを分子レベルで解析します。</p>
-          </div>
-        </div>
-        <div class="research-card">
-          <div class="research-card-img" style="background: linear-gradient(135deg, #e67e22, #d35400); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.5rem;">Redox</div>
-          <div class="research-card-body">
-            <h3 class="research-card-title">リンの酸化と還元</h3>
-            <p class="research-card-desc">還元型リン化合物の微生物による酸化・還元反応の機構解明に取り組んでいます。</p>
-          </div>
-        </div>
-        <div class="research-card">
-          <div class="research-card-img" style="background: linear-gradient(135deg, #8e44ad, #6c3483); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.5rem;">Design</div>
-          <div class="research-card-body">
-            <h3 class="research-card-title">リン代謝のデザインとバイオテクノロジー</h3>
-            <p class="research-card-desc">微生物のリン代謝を人工的にデザインし、バイオテクノロジーへの応用を目指します。</p>
-          </div>
+      <div class="news-more">
+        <a href="news.html">過去のお知らせを見る →</a>
+      </div>
+    </main>
+
+    <!-- Right: Sidebar -->
+    <aside class="sidebar">
+
+      <!-- Research Topics -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Research 研究テーマ</div>
+        <ul class="research-links">
+          <li>
+            <a href="research.html#cycle">
+              <span class="icon" style="background: #2980b9;">P</span>
+              リンの生物循環
+            </a>
+          </li>
+          <li>
+            <a href="research.html#metabolism">
+              <span class="icon" style="background: #27ae60;">M</span>
+              リン代謝経路の解明と応用
+            </a>
+          </li>
+          <li>
+            <a href="research.html#redox">
+              <span class="icon" style="background: #e67e22;">R</span>
+              リンの酸化と還元
+            </a>
+          </li>
+          <li>
+            <a href="research.html#design">
+              <span class="icon" style="background: #8e44ad;">D</span>
+              リン代謝のデザインとバイオテクノロジー
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- SNS -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">SNS</div>
+        <div class="sns-embed-placeholder">
+          X (Twitter) ウィジェット<br>埋め込み位置
         </div>
       </div>
-      <div class="text-center mt-24">
-        <a href="research.html" class="btn">研究テーマの詳細を見る</a>
+
+      <!-- Recruit -->
+      <div class="sidebar-section sidebar-recruit">
+        <div class="sidebar-title">大学院生募集</div>
+        <p>微生物の不思議な世界を<br>一緒に探求しませんか？<br>意欲ある学生の参加をお待ちしています。</p>
+        <a href="contact.html" class="recruit-btn">お問い合わせ →</a>
       </div>
+
+    </aside>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-info">
+        <strong>環境微生物工学研究室</strong><br>
+        広島大学大学院 統合生命科学研究科 生物工学プログラム<br>
+        〒739-8528 広島県東広島市鏡山1-3-1
+      </div>
+      <nav>
+        <ul class="footer-nav">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="research.html">Research</a></li>
+          <li><a href="members.html">Members</a></li>
+          <li><a href="publications.html">Publications</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="footer-copy">&copy; 2025 Environmental Microbiology Laboratory, Hiroshima University. All Rights Reserved.</div>
     </div>
-  </section>
+  </footer>
 
-  <!-- Student Recruitment CTA -->
-  <section class="cta-banner">
-    <div class="cta-banner-inner">
-      <h2>大学院生・研究生を募集しています</h2>
-      <p>微生物の不思議な世界を一緒に探求しませんか？<br>意欲ある学生の参加をお待ちしています。</p>
-      <a href="contact.html" class="cta-btn">お問い合わせはこちら</a>
-    </div>
-  </section>
-
-  <!-- Footer (injected by app.js) -->
-  <div id="site-footer"></div>
-
-  <script src="js/app.js"></script>
-  <script src="js/news.js"></script>
 </body>
 </html>
