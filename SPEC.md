@@ -68,10 +68,15 @@
 - `PUT /content/events/<id>` 更新
 - `DELETE /content/events/<id>` 削除
 
+公開
+- `GET /public/news` 公開ニュース取得
+- `GET /public/events` 公開行事予定取得
+
 ## 管理画面（UI）
 共通
 - Backend URL入力
 - ヘルスチェック
+- Google OAuth サインイン（管理者のみ操作可）
 - 変更は即時GCSへ反映
 
 ニュースリリース
@@ -84,4 +89,5 @@
 
 ## 運用メモ
 - GCS上のJSONを直接参照することでWeb側の表示にも流用可能
-- 認証は未実装（本番運用時は認証の追加推奨）
+- 認証はGoogle OAuth（IDトークン検証）
+- 完成後に README へ公開HP/管理画面のURLを記載する

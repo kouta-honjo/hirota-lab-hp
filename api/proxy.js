@@ -56,6 +56,9 @@ export default async function handler(req, res) {
     if (req.headers["accept"]) {
       headers["accept"] = req.headers["accept"];
     }
+    if (req.headers["authorization"]) {
+      headers["authorization"] = req.headers["authorization"];
+    }
 
     const init = {
       method: req.method,

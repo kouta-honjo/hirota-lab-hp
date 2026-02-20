@@ -72,6 +72,10 @@ button.delete {
   background: var(--danger);
 }
 
+#signOutBtn {
+  background: #495057;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

@@ -26,8 +26,13 @@ const eventDesc = document.getElementById("eventDesc");
 const eventSaveBtn = document.getElementById("eventSaveBtn");
 const eventResetBtn = document.getElementById("eventResetBtn");
 const eventsBodyTable = document.getElementById("eventsBodyTable");
+const googleSignIn = document.getElementById("googleSignIn");
+const signOutBtn = document.getElementById("signOutBtn");
+const authStatus = document.getElementById("authStatus");
 
 const STORAGE_KEY = "gcs_ui_backend_url";
+const TOKEN_KEY = "gcs_admin_id_token";
+const EMAIL_KEY = "gcs_admin_email";
 let editingNewsId = null;
 let editingEventId = null;
 
@@ -38,6 +43,39 @@ function log(message) {
 
 function getBackendUrl() {
   return (backendUrlInput.value || "").trim().replace(/\/$/, "");
+}
+
+function getAuthToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+function setAuthState(token, email) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    if (email) {
+      localStorage.setItem(EMAIL_KEY, email);
+      authStatus.textContent = `Signed in as ${email}`;
+    } else {
+      authStatus.textContent = "Signed in";
+    }
+    signOutBtn.disabled = false;
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(EMAIL_KEY);
+    authStatus.textContent = "Not signed in";
+    signOutBtn.disabled = true;
+  }
+}
+
+function parseJwt(token) {
+  try {
+    const payload = token.split(".")[1];
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(base64);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
 }
 
 function formatBytes(bytes) {
@@ -58,7 +96,13 @@ async function apiFetch(path, options = {}) {
   const proxy = new URL("/api/proxy", window.location.origin);
   proxy.searchParams.set("base", base);
   proxy.searchParams.set("path", path);
-  const res = await fetch(proxy.toString(), options);
+  const init = { ...options };
+  init.headers = init.headers || {};
+  const token = getAuthToken();
+  if (token && !init.headers.authorization) {
+    init.headers.authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(proxy.toString(), init);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HTTP ${res.status}: ${text}`);
@@ -78,6 +122,38 @@ async function apiJson(path, options = {}) {
   const text = await res.text();
   if (!text) return null;
   return JSON.parse(text);
+}
+
+function initGoogleAuth() {
+  const clientId = window.GOOGLE_OAUTH_CLIENT_ID;
+  if (!clientId) {
+    authStatus.textContent = "Missing GOOGLE_OAUTH_CLIENT_ID";
+    signOutBtn.disabled = true;
+    return;
+  }
+  if (!window.google?.accounts?.id) {
+    authStatus.textContent = "Google Identity Services not loaded";
+    signOutBtn.disabled = true;
+    return;
+  }
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response) => {
+      const token = response?.credential || "";
+      if (!token) {
+        log("Google sign-in failed: missing token");
+        return;
+      }
+      const payload = parseJwt(token);
+      const email = payload?.email || "";
+      setAuthState(token, email);
+      log(`Signed in: ${email || "unknown"}`);
+    },
+  });
+  window.google.accounts.id.renderButton(googleSignIn, {
+    theme: "outline",
+    size: "large",
+  });
 }
 
 async function healthCheck() {
@@ -362,6 +438,11 @@ eventsBodyTable.addEventListener("click", async (event) => {
     }
   }
 });
+
+signOutBtn.addEventListener("click", () => {
+  setAuthState("", "");
+  log("Signed out");
+});
 filesBody.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLButtonElement)) return;
@@ -414,6 +495,14 @@ eventSaveBtn.addEventListener("click", saveEvent);
 eventResetBtn.addEventListener("click", resetEventForm);
 
 backendUrlInput.value = localStorage.getItem(STORAGE_KEY) || "";
+const existingToken = getAuthToken();
+if (existingToken) {
+  const payload = parseJwt(existingToken);
+  setAuthState(existingToken, payload?.email || "");
+} else {
+  setAuthState("", "");
+}
+window.addEventListener("load", initGoogleAuth);
 if (backendUrlInput.value) {
   healthCheck();
   loadFiles();

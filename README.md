@@ -1,11 +1,11 @@
 # GCS File Access API
 
 Google Cloud Storage (GCS) バケット `agridx` の `統合生命科学特論/` 配下ファイルを操作する Flask API です。  
-Cloud Run デプロイと、Vercel UI からの操作確認を想定しています。
+Cloud Run デプロイと、Vercel での公開HP/管理画面配信を想定しています。
 
-## 現在のデプロイ先
-- UI (Vercel): `https://ui-tawny-one.vercel.app`
-- Backend (Cloud Run): `https://fileaccess-904514069802.asia-northeast2.run.app`
+## 公開URL（完成後に記載）
+- 公開HP: `<YOUR_VERCEL_URL>/`
+- 管理画面: `<YOUR_VERCEL_URL>/admin/`
 
 ## 実装内容
 - ファイル一覧取得
@@ -13,23 +13,27 @@ Cloud Run デプロイと、Vercel UI からの操作確認を想定していま
 - ファイルダウンロード
 - ファイル削除
 - CORS 対応（Vercel UI から呼び出し可能）
+- ニュース/行事予定の管理（GCS JSON）
+- Google OAuth による管理者認証
 
 ## 構成
 - `main.py`: Flask API 本体
 - `requirements.txt`: Python 依存
 - `Dockerfile`: Cloud Run 用コンテナ
-- `ui/`: Vercel 配備用の静的UI
-  - `ui/index.html`
-  - `ui/app.js`
-  - `ui/styles.css`
-  - `ui/vercel.json`
+- `admin/`: 管理画面（Vercel 静的配信）
+- `public/`: 公開HP（Vercel 静的配信）
+- `api/`: Vercel Serverless Function（`/api/proxy`）
+  - `admin/config.js`: `GOOGLE_OAUTH_CLIENT_ID` 設定
+  - `public/config.js`: `PUBLIC_API_BASE` 設定
 
 ## 必要な環境変数
 - `GCS_BUCKET_NAME` (default: `agridx`)
 - `GCS_FOLDER_PREFIX` (default: `統合生命科学特論/`)
 - `CMS_PREFIX` (default: `cms/`)
 - `GOOGLE_CLOUD_PROJECT` (ローカル実行時に必要)
-- `ALLOWED_ORIGINS` (推奨: `https://ui-tawny-one.vercel.app`)
+- `ALLOWED_ORIGINS` (推奨: `https://<YOUR_VERCEL_URL>`)
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `ADMIN_ALLOW_EMAILS` (例: `admin1@example.com,admin2@example.com`)
 
 ## API エンドポイント
 - `GET /` : ヘルスチェック
@@ -45,6 +49,8 @@ Cloud Run デプロイと、Vercel UI からの操作確認を想定していま
 - `POST /content/events` : 行事予定作成
 - `PUT /content/events/<id>` : 行事予定更新
 - `DELETE /content/events/<id>` : 行事予定削除
+- `GET /public/news` : 公開ニュース一覧取得
+- `GET /public/events` : 公開行事予定一覧取得
 
 ## ローカル起動
 ```powershell
@@ -71,13 +77,18 @@ gcloud run deploy gcs-backend-service `
   --region asia-northeast2 `
   --allow-unauthenticated `
   --service-account gcs-backend-service-sa@ihomework1.iam.gserviceaccount.com `
-  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",CMS_PREFIX="cms/",ALLOWED_ORIGINS="https://ui-tawny-one.vercel.app"
+  --set-env-vars GCS_BUCKET_NAME=agridx,GCS_FOLDER_PREFIX="統合生命科学特論/",CMS_PREFIX="cms/",ALLOWED_ORIGINS="https://<YOUR_VERCEL_URL>",GOOGLE_OAUTH_CLIENT_ID="<YOUR_CLIENT_ID>",ADMIN_ALLOW_EMAILS="admin1@example.com"
 ```
 
-## Vercel UI での確認
-1. UIを開く: `https://ui-tawny-one.vercel.app`
-2. `Backend URL` に `https://fileaccess-904514069802.asia-northeast2.run.app` を入力
-3. `Health Check` -> `Refresh` -> Upload/Download/Delete で動作確認
+## Vercel での確認
+1. 管理画面を開く: `<YOUR_VERCEL_URL>/admin/`
+2. `Backend URL` に Cloud Run のURLを入力
+3. Google Sign-In でログイン
+4. ニュース/行事予定の作成・更新・削除を実行
+
+## 静的設定ファイル
+- `admin/config.js`: `window.GOOGLE_OAUTH_CLIENT_ID` に OAuth Client ID を設定
+- `public/config.js`: `window.PUBLIC_API_BASE` に Cloud Run のURLを設定
 
 ## IAM
 Cloud Run のサービスアカウントに最低限以下を付与:

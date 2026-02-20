@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GCS File Console</title>
   <link rel="stylesheet" href="./styles.css" />
+  <script src="./config.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <main class="container">
@@ -21,6 +23,15 @@
         <button id="healthBtn" type="button">Health Check</button>
       </div>
       <p class="hint">Expected endpoints: <code>/files</code>, <code>/upload</code>, <code>/download/:filename</code>, <code>/delete/:filename</code></p>
+    </section>
+
+    <section class="panel">
+      <h2>Admin Sign-In</h2>
+      <div class="row">
+        <div id="googleSignIn"></div>
+        <button id="signOutBtn" type="button">Sign out</button>
+      </div>
+      <p class="hint" id="authStatus">Not signed in</p>
     </section>
 
     <section class="panel">

@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from google.cloud import storage
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from io import BytesIO
 
 app = Flask(__name__)
@@ -15,6 +17,8 @@ CORS(app, resources={r"/*": {"origins": os.environ.get("ALLOWED_ORIGINS", "*").s
 GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'agridx')
 GCS_FOLDER_PREFIX = os.environ.get('GCS_FOLDER_PREFIX', '統合生命科学特論/') # 末尾のスラッシュは重要
 CMS_PREFIX = os.environ.get('CMS_PREFIX', 'cms/')
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+ADMIN_ALLOW_EMAILS = os.environ.get('ADMIN_ALLOW_EMAILS', '')
 
 
 def _get_bucket():
@@ -65,6 +69,32 @@ def _write_json_blob(blob_name: str, payload: dict) -> None:
     blob = bucket.blob(blob_name)
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     blob.upload_from_string(body, content_type='application/json; charset=utf-8')
+
+def _get_allow_email_set():
+    return {e.strip().lower() for e in ADMIN_ALLOW_EMAILS.split(',') if e.strip()}
+
+def _require_admin():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return False, 'Missing bearer token'
+    token = auth_header.split(' ', 1)[1].strip()
+    if not token:
+        return False, 'Missing bearer token'
+    if not GOOGLE_OAUTH_CLIENT_ID:
+        return False, 'OAuth client id not configured'
+    allowed = _get_allow_email_set()
+    if not allowed:
+        return False, 'Admin allow list not configured'
+    try:
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), audience=GOOGLE_OAUTH_CLIENT_ID)
+    except Exception as e:
+        return False, f'Invalid token: {e}'
+    email = (idinfo.get('email') or '').lower()
+    if not email:
+        return False, 'Email missing in token'
+    if email not in allowed:
+        return False, 'Not authorized'
+    return True, email
 
 @app.route('/')
 def hello():
@@ -233,6 +263,9 @@ def get_news():
 
 @app.route('/content/news', methods=['POST'])
 def create_news():
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
     errors = _validate_news_input(data, for_update=False)
     if errors:
@@ -262,6 +295,9 @@ def create_news():
 
 @app.route('/content/news/<int:item_id>', methods=['PUT'])
 def update_news(item_id: int):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
     errors = _validate_news_input(data, for_update=True)
     if errors:
@@ -293,6 +329,9 @@ def update_news(item_id: int):
 
 @app.route('/content/news/<int:item_id>', methods=['DELETE'])
 def delete_news(item_id: int):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     try:
         blob_name = _cms_blob_name('news.json')
         payload = _read_json_blob(blob_name, _init_news_payload())
@@ -318,6 +357,9 @@ def get_events():
 
 @app.route('/content/events', methods=['POST'])
 def create_event():
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
     errors = _validate_event_input(data, for_update=False)
     if errors:
@@ -350,6 +392,9 @@ def create_event():
 
 @app.route('/content/events/<int:item_id>', methods=['PUT'])
 def update_event(item_id: int):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     data = request.get_json(silent=True) or {}
     errors = _validate_event_input(data, for_update=True)
     if errors:
@@ -387,6 +432,9 @@ def update_event(item_id: int):
 
 @app.route('/content/events/<int:item_id>', methods=['DELETE'])
 def delete_event(item_id: int):
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
     try:
         blob_name = _cms_blob_name('events.json')
         payload = _read_json_blob(blob_name, _init_events_payload())
@@ -405,3 +453,24 @@ if __name__ == '__main__':
     # ローカルテスト用 (本番環境ではCloud RunがGunicornなどを介して実行)
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
+@app.route('/public/news', methods=['GET'])
+def public_news():
+    try:
+        blob_name = _cms_blob_name('news.json')
+        payload = _read_json_blob(blob_name, _init_news_payload())
+        items = [item for item in payload.get('items', []) if item.get('visible', True)]
+        items.sort(key=lambda x: x.get('date', ''), reverse=True)
+        return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/public/events', methods=['GET'])
+def public_events():
+    try:
+        blob_name = _cms_blob_name('events.json')
+        payload = _read_json_blob(blob_name, _init_events_payload())
+        items = [item for item in payload.get('items', []) if item.get('visible', True)]
+        items.sort(key=lambda x: x.get('date', ''), reverse=True)
+        return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
