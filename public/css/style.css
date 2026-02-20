@@ -5,6 +5,8 @@
 
 /* --- Reset & Base --- */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { overflow-x: hidden; width: 100%; }
+body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
 
 :root {
   --navy: #1a2744;
@@ -55,9 +57,9 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .header-inner {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 0 24px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 32px;
   height: 100%;
   display: flex;
   align-items: center;
@@ -197,7 +199,7 @@ img { max-width: 100%; height: auto; display: block; }
 .main-wrap {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 32px 24px 48px;
+  padding: 32px 32px 48px;
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: 40px;
@@ -225,9 +227,15 @@ img { max-width: 100%; height: auto; display: block; }
   letter-spacing: 0.02em;
 }
 
+/* ===== Full-width sections (index) ===== */
+.section-full {
+  padding: 48px 32px;
+  width: 100%;
+}
+
 /* ===== Subpage Sections ===== */
 .section {
-  padding: 48px 24px;
+  padding: 48px 32px;
 }
 
 .section-alt {
@@ -348,6 +356,53 @@ img { max-width: 100%; height: auto; display: block; }
 .news-more a:hover {
   background: var(--blue);
   color: #fff;
+}
+
+/* ===== Research Cards 2x2 Grid ===== */
+.research-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.research-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.research-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.research-card-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  background: var(--gray-100);
+}
+
+.research-card-body {
+  padding: 16px 20px;
+}
+
+.research-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.research-card-desc {
+  font-size: 0.82rem;
+  color: var(--gray-500);
+  line-height: 1.7;
 }
 
 /* ===== Sidebar ===== */
@@ -623,7 +678,7 @@ img { max-width: 100%; height: auto; display: block; }
   background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
   color: #ffffff;
   text-align: center;
-  padding: 48px 24px;
+  padding: 48px 32px;
 }
 
 .cta-banner-inner {
@@ -655,9 +710,9 @@ img { max-width: 100%; height: auto; display: block; }
   padding: 32px 0;
 }
 .footer-inner {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 0 24px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
