@@ -29,7 +29,7 @@ body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
   --header-height: 64px;
 }
 
-html { font-size: 19px; scroll-behavior: smooth; }
+html { font-size: 22px; scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-sans);
@@ -151,8 +151,9 @@ img { max-width: 100%; height: auto; display: block; }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: none;
+  background: rgba(0, 0, 0, 0.45);
   padding: 32px 48px;
+  border-radius: 8px;
 }
 
 .hero-program {
