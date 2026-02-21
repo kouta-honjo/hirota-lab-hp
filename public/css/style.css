@@ -24,8 +24,8 @@ body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
   --gray-900: #1a1a1a;
   --font-sans: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
   --font-serif: 'Source Serif 4', 'Noto Serif JP', 'Yu Mincho', serif;
-  --max-width: 1650px;
-  --header-height: 120px;
+  --max-width: 1150px;
+  --header-height: 100px;
 }
 
 html { font-size: 20px; scroll-behavior: smooth; }
@@ -54,19 +54,26 @@ img { max-width: 100%; height: auto; display: block; }
   transform: translateY(0);
 }
 
-/* ===== Header (frosted glass, sticky) ===== */
+/* ===== Header (frosted glass, fixed) ===== */
 .site-header {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   color: var(--gray-900);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 100;
   height: var(--header-height);
   box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-  border-bottom: 1px solid rgba(221,221,221,0.5);
+  border-bottom: 1px solid rgba(221,221,221,0.4);
   transition: background 0.3s, box-shadow 0.3s;
+}
+
+/* Offset body content so it's not hidden behind fixed header */
+body {
+  padding-top: var(--header-height);
 }
 
 .header-inner {
@@ -262,9 +269,9 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0 auto;
 }
 
-/* About Us & CTA: full-width layout */
+/* Content width for full-width sections */
 .section-full .section-inner {
-  max-width: 100%;
+  max-width: 1150px;
 }
 
 .section-title {
@@ -696,7 +703,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .cta-banner-inner {
-  max-width: 100%;
+  max-width: 1150px;
   margin: 0 auto;
 }
 
