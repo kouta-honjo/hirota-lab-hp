@@ -45,14 +45,22 @@
   }
 
   .section { padding: 32px 16px; }
+  .section-full { padding: 32px 16px; }
 
-  .news-item {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .news-thumb {
+  /* News table stacks on mobile */
+  .news-table,
+  .news-table tbody,
+  .news-table tr,
+  .news-table td {
+    display: block;
     width: 100%;
-    height: 160px;
+  }
+  .news-td-date {
+    padding: 12px 0 4px 0;
+    width: auto;
+  }
+  .news-td-body {
+    padding: 0 0 12px 0;
   }
 
   .pub-tabs { overflow-x: auto; }
