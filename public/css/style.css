@@ -209,7 +209,7 @@ img { max-width: 100%; height: auto; display: block; }
 /* ===== Section Title ===== */
 .section-heading {
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--navy);
   padding-bottom: 10px;
@@ -221,7 +221,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .section-heading .sub {
   font-family: var(--font-sans);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 400;
   color: var(--gray-500);
   letter-spacing: 0.02em;
@@ -387,9 +387,10 @@ img { max-width: 100%; height: auto; display: block; }
 
 .research-card-img {
   width: 100%;
-  height: 160px;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   background: var(--gray-100);
+  display: block;
 }
 
 .research-card-body {
@@ -523,7 +524,7 @@ img { max-width: 100%; height: auto; display: block; }
   margin-bottom: 16px;
   line-height: 2;
   color: var(--gray-700);
-  font-size: 1.05rem;
+  font-size: 1.15rem;
 }
 
 .professor-profile {
@@ -692,8 +693,8 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0 auto;
 }
 
-.cta-banner h2 { font-size: 1.6rem; margin-bottom: 16px; }
-.cta-banner p { font-size: 1.05rem; opacity: 0.9; margin-bottom: 24px; line-height: 2; }
+.cta-banner h2 { font-size: 1.8rem; margin-bottom: 16px; }
+.cta-banner p { font-size: 1.15rem; opacity: 0.9; margin-bottom: 24px; line-height: 2; }
 
 .cta-btn {
   display: inline-block;
