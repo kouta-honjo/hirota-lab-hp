@@ -9,6 +9,7 @@ from google.oauth2 import id_token, service_account
 from google.auth.transport import requests as google_requests
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+from google.cloud import storage as gcs_storage
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": os.environ.get("ALLOWED_ORIGINS", "*").split(",")}})
@@ -19,6 +20,8 @@ CMS_PREFIX = os.environ.get('CMS_PREFIX', 'cms')
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 ADMIN_ALLOW_EMAILS = os.environ.get('ADMIN_ALLOW_EMAILS', '')
 SERVICE_ACCOUNT_FILE = os.environ.get('SERVICE_ACCOUNT_FILE', 'ihomework1-b1a2db2949de.json')
+GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'ihomework1_cloudbuild')
+GCS_CMS_PREFIX = os.environ.get('GCS_CMS_PREFIX', 'cms/')
 
 # --- Google Drive Helpers ---
 _drive_service = None
@@ -71,38 +74,76 @@ def _get_cms_folder_id():
     return _find_or_create_folder(CMS_PREFIX)
 
 
-def _read_drive_json(filename):
-    """Read a JSON file from the CMS folder on Drive."""
-    cms_folder = _get_cms_folder_id()
-    file_meta = _find_file(filename, cms_folder)
-    if not file_meta:
-        return None
-    service = _get_drive_service()
-    req = service.files().get_media(fileId=file_meta['id'])
-    buf = BytesIO()
-    downloader = MediaIoBaseDownload(buf, req)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    buf.seek(0)
+def _get_gcs_client():
+    """Get GCS client using service account or default credentials."""
+    if os.path.exists(SERVICE_ACCOUNT_FILE):
+        creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE)
+        return gcs_storage.Client(credentials=creds, project=creds.project_id)
+    return gcs_storage.Client()
+
+def _read_gcs_json(filename):
+    """Read a JSON file from GCS."""
     try:
-        return json.loads(buf.read().decode('utf-8'))
+        client = _get_gcs_client()
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_CMS_PREFIX + filename)
+        if not blob.exists():
+            return None
+        data = blob.download_as_text(encoding='utf-8')
+        return json.loads(data)
     except Exception:
         return None
 
+def _write_gcs_json(filename, data):
+    """Write a JSON file to GCS."""
+    client = _get_gcs_client()
+    bucket = client.bucket(GCS_BUCKET_NAME)
+    blob = bucket.blob(GCS_CMS_PREFIX + filename)
+    body = json.dumps(data, ensure_ascii=False, indent=2)
+    blob.upload_from_string(body, content_type='application/json')
+
+def _read_drive_json(filename):
+    """Read a JSON file from the CMS folder on Drive, with GCS fallback."""
+    # Try Drive first
+    try:
+        cms_folder = _get_cms_folder_id()
+        file_meta = _find_file(filename, cms_folder)
+        if file_meta:
+            service = _get_drive_service()
+            req = service.files().get_media(fileId=file_meta['id'])
+            buf = BytesIO()
+            downloader = MediaIoBaseDownload(buf, req)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            buf.seek(0)
+            return json.loads(buf.read().decode('utf-8'))
+    except Exception:
+        pass
+    # Fallback to GCS
+    return _read_gcs_json(filename)
+
 
 def _write_drive_json(filename, data):
-    """Write/update a JSON file in the CMS folder on Drive."""
-    cms_folder = _get_cms_folder_id()
-    body = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
-    media = MediaIoBaseUpload(BytesIO(body), mimetype='application/json', resumable=False)
-    service = _get_drive_service()
-    existing = _find_file(filename, cms_folder)
-    if existing:
-        service.files().update(fileId=existing['id'], media_body=media).execute()
-    else:
-        metadata = {'name': filename, 'parents': [cms_folder]}
-        service.files().create(body=metadata, media_body=media, fields='id').execute()
+    """Write/update a JSON file in the CMS folder on Drive, with GCS fallback."""
+    # Try Drive first
+    try:
+        cms_folder = _get_cms_folder_id()
+        body = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
+        media = MediaIoBaseUpload(BytesIO(body), mimetype='application/json', resumable=False)
+        service = _get_drive_service()
+        existing = _find_file(filename, cms_folder)
+        if existing:
+            service.files().update(fileId=existing['id'], media_body=media).execute()
+            return
+        else:
+            metadata = {'name': filename, 'parents': [cms_folder]}
+            service.files().create(body=metadata, media_body=media, fields='id').execute()
+            return
+    except Exception as e:
+        app.logger.warning(f'Drive write failed for {filename}, falling back to GCS: {e}')
+    # Fallback to GCS
+    _write_gcs_json(filename, data)
 
 
 def _list_drive_files(folder_id=None):
@@ -871,6 +912,31 @@ def public_research():
         items = [i for i in payload.get('items', []) if i.get('visible', True)]
         items.sort(key=lambda x: x.get('order', 99))
         return jsonify({'items': items})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+# --- Bulk Seed Endpoint ---
+@app.route('/seed/<content_type>', methods=['POST'])
+def seed_content(content_type):
+    """Bulk seed endpoint for initial data loading. Requires admin auth."""
+    ok, reason = _require_admin()
+    if not ok:
+        return jsonify({'error': reason}), 401
+    valid_types = ('publications', 'members', 'news', 'events', 'research')
+    if content_type not in valid_types:
+        return jsonify({'error': f'Invalid type. Must be one of: {valid_types}'}), 400
+    data = request.get_json(silent=True)
+    if not data or 'items' not in data:
+        return jsonify({'error': 'Request must contain items array'}), 400
+    try:
+        filename = f'{content_type}.json'
+        now = _utc_now_iso()
+        payload = {'updated_at': now, 'items': data['items']}
+        _write_content(filename, payload)
+        return jsonify({'message': f'Seeded {len(data["items"])} items', 'count': len(data['items'])}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
