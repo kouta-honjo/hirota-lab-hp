@@ -32,7 +32,7 @@
 }
 
 @media (max-width: 600px) {
-  html { font-size: 20px; }
+  html { font-size: 17px; }
 
   .hero {
     aspect-ratio: 16 / 9;
