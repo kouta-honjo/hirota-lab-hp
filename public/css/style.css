@@ -28,7 +28,7 @@ body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
   --header-height: 120px;
 }
 
-html { font-size: 37px; scroll-behavior: smooth; }
+html { font-size: 31px; scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-sans);
@@ -43,16 +43,30 @@ a:hover { color: var(--blue-accent); }
 
 img { max-width: 100%; height: auto; display: block; }
 
-/* ===== Header ===== */
+/* ===== Fade-in Animation ===== */
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Header (frosted glass, sticky) ===== */
 .site-header {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--gray-900);
   position: sticky;
   top: 0;
   z-index: 100;
   height: var(--header-height);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  border-bottom: 1px solid var(--gray-200);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(221,221,221,0.5);
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
 .header-inner {
@@ -115,7 +129,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .header-nav a:hover,
 .header-nav a.active {
-  background: var(--gray-50);
+  background: rgba(247,247,247,0.8);
   color: var(--navy);
 }
 
@@ -160,7 +174,9 @@ img { max-width: 100%; height: auto; display: block; }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   padding: 36px 56px;
   border-radius: 8px;
 }
