@@ -27,10 +27,15 @@ function readRawBody(req) {
 }
 
 export default async function handler(req, res) {
-  const { base, path } = req.query;
+  const { path } = req.query;
+  const base = req.query.base || process.env.PUBLIC_API_BASE || "";
 
-  if (!base || !path || typeof base !== "string" || typeof path !== "string") {
-    res.status(400).send("Missing base or path");
+  if (!path || typeof path !== "string") {
+    res.status(400).send("Missing path");
+    return;
+  }
+  if (!base) {
+    res.status(400).send("Missing base URL – set PUBLIC_API_BASE env var");
     return;
   }
   if (!isAllowedBase(base)) {

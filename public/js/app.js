@@ -5,7 +5,12 @@ const API_BASE = window.PUBLIC_API_BASE || '';
 
 // --- API Communication ---
 async function apiGet(path) {
-  const url = API_BASE ? `${API_BASE}${path}` : `/api/proxy?base=&path=${encodeURIComponent(path)}`;
+  let url;
+  if (API_BASE) {
+    url = `${API_BASE}${path}`;
+  } else {
+    url = `/api/proxy?path=${encodeURIComponent(path)}`;
+  }
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
