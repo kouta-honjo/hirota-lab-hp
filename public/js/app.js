@@ -43,8 +43,11 @@ function injectHeader() {
     <header class="site-header">
       <div class="header-inner">
         <a href="index.html" class="header-logo" style="text-decoration:none;">
-          <span class="header-logo-sub">広島大学大学院 統合生命科学研究科 生物工学プログラム</span>
-          <span class="header-logo-main">環境微生物工学研究室</span>
+          <img src="img/crest.jpg" alt="広島大学" class="header-crest">
+          <div class="header-logo-text">
+            <span class="header-logo-sub">広島大学大学院 統合生命科学研究科 生物工学プログラム</span>
+            <span class="header-logo-main">環境微生物工学研究室（廣田研）</span>
+          </div>
         </a>
         <button class="nav-toggle" aria-label="メニュー" onclick="toggleNav()">&#9776;</button>
         <nav>
@@ -75,15 +78,13 @@ function injectFooter() {
   footer.innerHTML = `
     <footer class="site-footer">
       <div class="footer-inner">
+        <img src="img/crest.jpg" alt="広島大学" class="footer-crest">
         <div class="footer-info">
-          <strong>環境微生物工学研究室</strong><br>
+          <strong>環境微生物工学研究室（廣田研）</strong><br>
           広島大学大学院 統合生命科学研究科 生物工学プログラム<br>
           〒739-8528 広島県東広島市鏡山1-3-1
         </div>
-        <nav>
-          <ul class="footer-nav">${navHTML}</ul>
-        </nav>
-        <div class="footer-copy">&copy; ${new Date().getFullYear()} Environmental Microbiology Laboratory, Hiroshima University. All Rights Reserved.</div>
+        <div class="footer-copy">&copy; ${new Date().getFullYear()} Environmental Microbiology Laboratory, Hiroshima University.</div>
       </div>
     </footer>
   `;

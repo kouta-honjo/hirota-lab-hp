@@ -32,7 +32,7 @@
 }
 
 @media (max-width: 600px) {
-  html { font-size: 21px; }
+  html { font-size: 24px; }
 
   .hero {
     aspect-ratio: 16 / 9;
@@ -71,5 +71,8 @@
   .footer-inner {
     flex-direction: column;
     text-align: center;
+  }
+  .footer-copy {
+    margin-left: 0;
   }
 }
