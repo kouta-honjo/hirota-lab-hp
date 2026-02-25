@@ -70,11 +70,11 @@
     font-size: 0.8rem;
   }
 
+  .group-photo-img { width: 80%; }
   .members-list {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-  .member-photo { width: 80px; height: 80px; }
 
   .footer-inner {
     flex-direction: column;

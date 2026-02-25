@@ -596,7 +596,7 @@ body {
 
 .pub-tab {
   padding: 10px 20px;
-  font-size: 1.275rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--gray-500);
   background: none;
@@ -617,7 +617,7 @@ body {
 .pub-year-group { margin-bottom: 24px; }
 
 .pub-year {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--navy);
   margin-bottom: 12px;
@@ -626,18 +626,39 @@ body {
 .pub-list { list-style: none; }
 
 .pub-item {
-  padding: 12px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--gray-100);
-  font-size: 1.275rem;
+  font-size: 0.85rem;
   line-height: 1.7;
 }
 
 .pub-item .authors { color: var(--gray-500); }
 .pub-item .title { font-weight: 600; }
 .pub-item .journal { font-style: italic; color: var(--gray-500); }
-.pub-item .doi a { font-size: 1.2rem; color: var(--blue-accent); }
+.pub-item .doi a { font-size: 0.8rem; color: var(--blue-accent); }
 
 /* ===== Members Page ===== */
+
+/* --- Group Photos --- */
+.group-photos {
+  margin-bottom: 48px;
+}
+.group-photo-item {
+  margin-bottom: 32px;
+}
+.group-photo-year {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+.group-photo-img {
+  width: 50%;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+/* --- Member Groups --- */
 .members-group { margin-bottom: 48px; }
 
 .members-group h3 {
@@ -660,20 +681,38 @@ body {
   padding: 16px;
 }
 
-.member-photo {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin: 0 auto 12px;
-  display: block;
-  background: var(--gray-100);
-}
-
 .member-name { font-size: 1.5rem; font-weight: 700; color: var(--gray-900); margin-bottom: 2px; }
 .member-name-en { font-size: 1.2rem; color: var(--gray-500); margin-bottom: 4px; }
 .member-role { font-size: 1.275rem; color: var(--blue); }
 .member-interest { font-size: 1.2rem; color: var(--gray-500); margin-top: 4px; }
+
+/* --- Students Simple List --- */
+.members-simple-list {
+  list-style: none;
+  padding: 0;
+}
+.members-list-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+.member-list-role {
+  color: var(--blue);
+  font-weight: 500;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.member-list-name {
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.member-list-name-en {
+  color: var(--gray-500);
+  font-size: 0.85rem;
+}
 
 /* ===== Contact Page ===== */
 .contact-info { margin-bottom: 32px; }

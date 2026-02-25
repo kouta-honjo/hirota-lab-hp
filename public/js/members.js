@@ -55,6 +55,17 @@
 
       content.innerHTML = groups.map((group, idx) => {
         if (group.length === 0) return '';
+        if (idx === 1) {
+          // Students: simple list format
+          return `
+            <div class="members-group">
+              <h3>${GROUP_LABELS[idx]}</h3>
+              <ul class="members-simple-list">
+                ${group.map(member => renderMemberListItem(member)).join('')}
+              </ul>
+            </div>
+          `;
+        }
         return `
           <div class="members-group">
             <h3>${GROUP_LABELS[idx]}</h3>
@@ -76,20 +87,29 @@
     const role = member.role || '';
     const roleLabel = ROLE_LABELS[role] || role;
     const interest = member.research_interest || '';
-    const photo = member.photo_url || '';
-
-    const photoHTML = photo
-      ? `<img class="member-photo" src="${escapeHTML(photo)}" alt="${escapeHTML(name)}">`
-      : `<div class="member-photo" style="display:flex;align-items:center;justify-content:center;color:var(--color-text-light);font-size:0.75rem;">No Photo</div>`;
 
     return `
       <div class="member-card">
-        ${photoHTML}
         <div class="member-name">${escapeHTML(name)}</div>
         ${nameEn ? `<div class="member-name-en">${escapeHTML(nameEn)}</div>` : ''}
         <div class="member-role">${escapeHTML(roleLabel)}</div>
         ${interest ? `<div class="member-interest">${escapeHTML(interest)}</div>` : ''}
       </div>
+    `;
+  }
+
+  function renderMemberListItem(member) {
+    const name = member.name || '';
+    const nameEn = member.name_en || '';
+    const role = member.role || '';
+    const roleLabel = ROLE_LABELS[role] || role;
+
+    return `
+      <li class="members-list-item">
+        <span class="member-list-role">${escapeHTML(roleLabel)}</span>
+        <span class="member-list-name">${escapeHTML(name)}</span>
+        ${nameEn ? `<span class="member-list-name-en">${escapeHTML(nameEn)}</span>` : ''}
+      </li>
     `;
   }
 

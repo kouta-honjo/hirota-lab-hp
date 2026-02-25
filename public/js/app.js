@@ -46,7 +46,7 @@ function injectHeader() {
           <img src="img/crest.jpg" alt="広島大学" class="header-crest">
           <div class="header-logo-text">
             <span class="header-logo-sub">広島大学大学院 統合生命科学研究科 生物工学プログラム</span>
-            <span class="header-logo-main">環境微生物工学研究室（廣田研）</span>
+            <span class="header-logo-main">環境微生物工学研究室</span>
           </div>
         </a>
         <button class="nav-toggle" aria-label="メニュー" onclick="toggleNav()">&#9776;</button>
