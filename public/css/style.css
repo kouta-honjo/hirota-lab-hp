@@ -596,6 +596,25 @@ body {
   color: var(--gray-700);
 }
 
+.research-figure {
+  margin: 24px 0;
+  text-align: center;
+}
+.research-figure img {
+  max-width: 80%;
+  border-radius: 4px;
+}
+.research-figure figcaption {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  line-height: 1.6;
+  text-align: left;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ===== Publications Page ===== */
 .pub-tabs {
   display: flex;
