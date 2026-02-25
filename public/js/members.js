@@ -55,23 +55,12 @@
 
       content.innerHTML = groups.map((group, idx) => {
         if (group.length === 0) return '';
-        if (idx === 1) {
-          // Students: simple list format
-          return `
-            <div class="members-group">
-              <h3>${GROUP_LABELS[idx]}</h3>
-              <ul class="members-simple-list">
-                ${group.map(member => renderMemberListItem(member)).join('')}
-              </ul>
-            </div>
-          `;
-        }
         return `
           <div class="members-group">
             <h3>${GROUP_LABELS[idx]}</h3>
-            <div class="members-list">
-              ${group.map(member => renderMember(member)).join('')}
-            </div>
+            <ul class="members-simple-list">
+              ${group.map(member => renderMemberListItem(member)).join('')}
+            </ul>
           </div>
         `;
       }).join('');
@@ -81,34 +70,19 @@
     }
   }
 
-  function renderMember(member) {
-    const name = member.name || '';
-    const nameEn = member.name_en || '';
-    const role = member.role || '';
-    const roleLabel = ROLE_LABELS[role] || role;
-    const interest = member.research_interest || '';
-
-    return `
-      <div class="member-card">
-        <div class="member-name">${escapeHTML(name)}</div>
-        ${nameEn ? `<div class="member-name-en">${escapeHTML(nameEn)}</div>` : ''}
-        <div class="member-role">${escapeHTML(roleLabel)}</div>
-        ${interest ? `<div class="member-interest">${escapeHTML(interest)}</div>` : ''}
-      </div>
-    `;
-  }
-
   function renderMemberListItem(member) {
     const name = member.name || '';
     const nameEn = member.name_en || '';
     const role = member.role || '';
     const roleLabel = ROLE_LABELS[role] || role;
+    const researchmap = member.researchmap_url || '';
 
     return `
       <li class="members-list-item">
         <span class="member-list-role">${escapeHTML(roleLabel)}</span>
         <span class="member-list-name">${escapeHTML(name)}</span>
         ${nameEn ? `<span class="member-list-name-en">${escapeHTML(nameEn)}</span>` : ''}
+        ${researchmap ? `<a class="member-list-researchmap" href="${escapeHTML(researchmap)}" target="_blank" rel="noopener">researchmap</a>` : ''}
       </li>
     `;
   }
